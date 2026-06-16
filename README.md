@@ -1,4 +1,4 @@
-# Environmental-Advocacy-App
+# Environmental-App
 By: Avishai Rajkumar
 
-Extracurricular high school computer science project + environmental awareness and sustainablity goals
+Mobile app raising environmental awareness and translating it into beneficial action. 
