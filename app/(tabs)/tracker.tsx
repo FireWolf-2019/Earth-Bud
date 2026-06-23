@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -268,6 +269,55 @@ export default function TrackerScreen() {
   // Collective impact (if 1M people did this)
   const collectiveMT = parseFloat((co2SavedWeek * 1_000_000).toFixed(0));
 
+  // Best current streak across all active actions
+  const bestStreak = useMemo(() => {
+    return activeActions.reduce((best, id) => {
+      let streak = 0;
+      const checkDate = new Date();
+      while (true) {
+        const ds = checkDate.toISOString().split('T')[0];
+        if (!actionLogs.some(l => l.actionId === id && l.date === ds && l.completed)) break;
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+      return Math.max(best, streak);
+    }, 0);
+  }, [activeActions, actionLogs]);
+
+  async function handleShare() {
+    const name = state.userName ? `${state.userName}'s` : 'My';
+    const co2Display = co2SavedWeek > 0 ? `${co2SavedWeek} tons` : 'building momentum';
+    const carsOff = Math.round(collectiveMT / 4.6).toLocaleString();
+
+    const lines = [
+      `🌍 ${name} Weekly Eco Progress`,
+      '',
+      `✅ Weekly actions: ${weeklyDone}/${weeklyPossible} completed (${weeklyPct}%)`,
+      `🌱 CO₂ saved this week: ${co2Display}`,
+      `⚡ Active eco-habits: ${totalCommitted}`,
+      `📅 Today: ${todayDoneCount}/${totalCommitted} done`,
+    ];
+
+    if (bestStreak > 0) {
+      lines.push(`🔥 Best current streak: ${bestStreak} day${bestStreak !== 1 ? 's' : ''}`);
+    }
+
+    if (collectiveMT > 0) {
+      lines.push(
+        '',
+        `🌐 If 1 million people tracked like this, we'd save ${collectiveMT.toLocaleString()} metric tons of CO₂ — equal to taking ${carsOff} cars off the road for a year.`,
+      );
+    }
+
+    lines.push('', 'Join me in protecting our planet! 🌿');
+
+    try {
+      await Share.share({ message: lines.join('\n') });
+    } catch {
+      // user cancelled or dismissed — no action needed
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
@@ -275,8 +325,15 @@ export default function TrackerScreen() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.header}>
-        <Text style={styles.headerTitle}>My Progress</Text>
-        <Text style={styles.headerSub}>Track your eco-actions week by week</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.headerTitle}>My Progress</Text>
+            <Text style={styles.headerSub}>Track your eco-actions week by week</Text>
+          </View>
+          <TouchableOpacity onPress={handleShare} style={styles.shareBtn} accessibilityLabel="Share my progress">
+            <Ionicons name="share-outline" size={22} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -385,8 +442,21 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 20,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   headerTitle: { fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
   headerSub: { fontSize: 13, color: EcoColors.green200, marginTop: 4 },
+  shareBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   content: { padding: 16, paddingBottom: 40, gap: 14 },
   encourageCard: {
     flexDirection: 'row',
