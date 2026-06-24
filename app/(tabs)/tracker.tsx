@@ -1,18 +1,18 @@
-import React, { useMemo } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  Share,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useMemo, useState } from 'react';
+import {
+  SafeAreaView,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 import { EcoColors } from '@/constants/theme';
-import { useAppStore, ECO_ACTIONS, ActionLog } from '@/store/app-store';
+import { ActionLog, ECO_ACTIONS, useAppStore } from '@/store/app-store';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -20,17 +20,9 @@ function todayStr() {
   return new Date().toISOString().split('T')[0];
 }
 
-function dateStr(offset: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + offset);
-  return d.toISOString().split('T')[0];
-}
-
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
 function getWeekDates(): string[] {
   const today = new Date();
-  const day = today.getDay(); // 0=Sun
+  const day = today.getDay();
   const mondayOffset = day === 0 ? -6 : 1 - day;
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today);
@@ -44,6 +36,29 @@ function getDayLabel(dateIso: string): string {
   const today = todayStr();
   if (dateIso === today) return 'Today';
   return d.toLocaleDateString('en-US', { weekday: 'short' });
+}
+
+function getLongestStreakEver(logs: ActionLog[], actionId: string): number {
+  const dates = [...new Set(
+    logs.filter(l => l.actionId === actionId && l.completed).map(l => l.date)
+  )].sort();
+
+  if (dates.length === 0) return 0;
+
+  let maxStreak = 1;
+  let current = 1;
+  for (let i = 1; i < dates.length; i++) {
+    const diffDays = Math.round(
+      (new Date(dates[i]).getTime() - new Date(dates[i - 1]).getTime()) / 86400000
+    );
+    if (diffDays === 1) {
+      current++;
+      if (current > maxStreak) maxStreak = current;
+    } else if (diffDays > 1) {
+      current = 1;
+    }
+  }
+  return maxStreak;
 }
 
 const ENCOURAGING = [
@@ -74,24 +89,15 @@ function WeekGrid({
 
   return (
     <View style={styles.weekGrid}>
-      {dates.map((date, i) => {
+      {dates.map((date) => {
         const done = logSet.has(date);
         const isToday = date === today;
         const isFuture = date > today;
         return (
           <View key={date} style={styles.dayCol}>
             <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>{getDayLabel(date)}</Text>
-            <View
-              style={[
-                styles.dayCellOuter,
-                isToday && styles.dayCellToday,
-              ]}>
-              <View
-                style={[
-                  styles.dayCell,
-                  done && styles.dayCellDone,
-                  isFuture && styles.dayCellFuture,
-                ]}>
+            <View style={[styles.dayCellOuter, isToday && styles.dayCellToday]}>
+              <View style={[styles.dayCell, done && styles.dayCellDone, isFuture && styles.dayCellFuture]}>
                 {done && <Ionicons name="checkmark" size={12} color="#fff" />}
               </View>
             </View>
@@ -129,9 +135,8 @@ function ActionTrackerCard({
   const today = todayStr();
   const todayDone = logs.some(l => l.actionId === actionId && l.date === today && l.completed);
 
-  // Calculate streak
   let streak = 0;
-  let checkDate = new Date();
+  const checkDate = new Date();
   while (true) {
     const ds = checkDate.toISOString().split('T')[0];
     const done = logs.some(l => l.actionId === actionId && l.date === ds && l.completed);
@@ -140,7 +145,6 @@ function ActionTrackerCard({
     checkDate.setDate(checkDate.getDate() - 1);
   }
 
-  // Week completion count
   const weekDone = weekDates.filter(d =>
     logs.some(l => l.actionId === actionId && l.date === d && l.completed)
   ).length;
@@ -182,7 +186,6 @@ function ProgressRing({ percentage, size = 100 }: { percentage: number; size?: n
 
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      {/* Track ring */}
       <View
         style={{
           position: 'absolute',
@@ -193,7 +196,6 @@ function ProgressRing({ percentage, size = 100 }: { percentage: number; size?: n
           borderColor: EcoColors.gray200,
         }}
       />
-      {/* Progress indicator — simplified visual */}
       <View
         style={{
           position: 'absolute',
@@ -204,12 +206,263 @@ function ProgressRing({ percentage, size = 100 }: { percentage: number; size?: n
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-        <Text style={{ fontSize: size / 4, fontWeight: '900', color: EcoColors.primary }}>
-          {p}%
+        <Text style={{ fontSize: size / 4, fontWeight: '900', color: EcoColors.primary }}>{p}%</Text>
+        <Text style={{ fontSize: size / 10, color: EcoColors.textMuted, marginTop: 2 }}>weekly</Text>
+      </View>
+    </View>
+  );
+}
+
+function SegmentControl({
+  tabs,
+  selected,
+  onSelect,
+}: {
+  tabs: string[];
+  selected: number;
+  onSelect: (i: number) => void;
+}) {
+  return (
+    <View style={styles.segmentWrap}>
+      {tabs.map((tab, i) => (
+        <TouchableOpacity
+          key={tab}
+          style={[styles.segmentItem, selected === i && styles.segmentItemActive]}
+          onPress={() => onSelect(i)}
+          activeOpacity={0.7}>
+          <Text style={[styles.segmentText, selected === i && styles.segmentTextActive]}>
+            {tab}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+// ── Tab Views ─────────────────────────────────────────────────────────────────
+
+function ThisWeekTab({
+  encouragement,
+  todayDoneCount,
+  totalCommitted,
+  weeklyPct,
+  co2SavedWeek,
+  collectiveMT,
+}: {
+  encouragement: string;
+  todayDoneCount: number;
+  totalCommitted: number;
+  weeklyPct: number;
+  co2SavedWeek: number;
+  collectiveMT: number;
+}) {
+  const carsOff = Math.round(collectiveMT / 4.6).toLocaleString();
+
+  return (
+    <View style={styles.tabContent}>
+      <LinearGradient
+        colors={[EcoColors.green600, EcoColors.green500]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.encourageCard}>
+        <Ionicons name="leaf" size={20} color="#fff" />
+        <Text style={styles.encourageText}>{encouragement}</Text>
+      </LinearGradient>
+
+      <Text style={styles.sectionTitle}>This Week's Impact</Text>
+
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>{todayDoneCount}/{totalCommitted}</Text>
+          <Text style={styles.statLabel}>Done Today</Text>
+        </View>
+        <View style={styles.statCard}>
+          <ProgressRing percentage={weeklyPct} size={80} />
+        </View>
+        <View style={styles.statCard}>
+          <Text style={[styles.statValue, { color: EcoColors.secondary }]}>
+            {co2SavedWeek}
+          </Text>
+          <Text style={styles.statLabel}>tons CO₂</Text>
+          <Text style={styles.statSub}>saved this week</Text>
+        </View>
+      </View>
+
+      <View style={styles.collectiveCard}>
+        <View style={styles.collectiveHeader}>
+          <Ionicons name="earth" size={20} color={EcoColors.secondary} />
+          <Text style={styles.collectiveTitle}>Collective Impact</Text>
+        </View>
+        <Text style={styles.collectiveText}>
+          If 1 million people tracked like you this week, we'd save{' '}
+          <Text style={styles.collectiveHighlight}>{collectiveMT.toLocaleString()} metric tons</Text>{' '}
+          of CO₂ — equivalent to taking{' '}
+          <Text style={styles.collectiveHighlight}>{carsOff} cars</Text>{' '}
+          off the road for a year.
         </Text>
-        <Text style={{ fontSize: size / 10, color: EcoColors.textMuted, marginTop: 2 }}>
-          weekly
-        </Text>
+      </View>
+    </View>
+  );
+}
+
+function MyActionsTab({
+  activeActions,
+  actionLogs,
+  weekDates,
+  onLog,
+}: {
+  activeActions: string[];
+  actionLogs: ActionLog[];
+  weekDates: string[];
+  onLog: (id: string, completed: boolean) => void;
+}) {
+  const today = todayStr();
+
+  if (activeActions.length === 0) {
+    return (
+      <View style={styles.tabContent}>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyEmoji}>🌱</Text>
+          <Text style={styles.emptyTitle}>No actions yet</Text>
+          <Text style={styles.emptyText}>
+            Head to the Actions tab to commit to eco-habits, then track them here daily.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  const todayDoneCount = activeActions.filter(id =>
+    actionLogs.some(l => l.actionId === id && l.date === today && l.completed)
+  ).length;
+
+  return (
+    <View style={styles.tabContent}>
+      <View style={styles.actionsHeader}>
+        <Text style={styles.sectionTitle}>My Committed Actions</Text>
+        <View style={styles.todayBadge}>
+          <Ionicons name="checkmark-circle" size={14} color={EcoColors.primary} />
+          <Text style={styles.todayBadgeText}>{todayDoneCount}/{activeActions.length} today</Text>
+        </View>
+      </View>
+      {activeActions.map(id => (
+        <ActionTrackerCard
+          key={id}
+          actionId={id}
+          logs={actionLogs}
+          weekDates={weekDates}
+          onLog={completed => onLog(id, completed)}
+        />
+      ))}
+    </View>
+  );
+}
+
+function LifetimeTab({
+  lifetimeTotalActions,
+  lifetimeCO2Saved,
+  lifetimeActiveDays,
+  lifetimeTreesEquiv,
+  longestStreakEver,
+  totalCommitted,
+}: {
+  lifetimeTotalActions: number;
+  lifetimeCO2Saved: number;
+  lifetimeActiveDays: number;
+  lifetimeTreesEquiv: number;
+  longestStreakEver: number;
+  totalCommitted: number;
+}) {
+  const milestones = [
+    { icon: '🌱', label: 'First action completed', done: lifetimeTotalActions >= 1 },
+    { icon: '🔥', label: '7-day streak on any action', done: longestStreakEver >= 7 },
+    { icon: '🌿', label: '25 total actions completed', done: lifetimeTotalActions >= 25 },
+    { icon: '🌳', label: '50 total actions completed', done: lifetimeTotalActions >= 50 },
+    { icon: '⚡', label: 'Committed to 5+ eco-habits', done: totalCommitted >= 5 },
+    { icon: '💧', label: '0.1 ton CO₂ saved lifetime', done: lifetimeCO2Saved >= 0.1 },
+    { icon: '☀️', label: '0.5 ton CO₂ saved lifetime', done: lifetimeCO2Saved >= 0.5 },
+    { icon: '🌍', label: '1 ton CO₂ saved lifetime', done: lifetimeCO2Saved >= 1.0 },
+    { icon: '🚀', label: '30-day streak on any action', done: longestStreakEver >= 30 },
+    { icon: '🏆', label: '5 tons CO₂ saved lifetime', done: lifetimeCO2Saved >= 5.0 },
+  ];
+
+  const achieved = milestones.filter(m => m.done).length;
+
+  return (
+    <View style={styles.tabContent}>
+      <Text style={styles.sectionTitle}>Lifetime Stats</Text>
+
+      <View style={styles.lifetimeGrid}>
+        <View style={[styles.lifetimeStat, { borderColor: EcoColors.green200 }]}>
+          <Text style={styles.lifetimeStatValue}>{lifetimeTotalActions}</Text>
+          <Text style={styles.lifetimeStatLabel}>Actions{'\n'}Completed</Text>
+          <Text style={styles.lifetimeStatIcon}>✅</Text>
+        </View>
+        <View style={[styles.lifetimeStat, { borderColor: EcoColors.blue200 }]}>
+          <Text style={[styles.lifetimeStatValue, { color: EcoColors.secondary }]}>
+            {lifetimeCO2Saved}
+          </Text>
+          <Text style={styles.lifetimeStatLabel}>Tons CO₂{'\n'}Saved</Text>
+          <Text style={styles.lifetimeStatIcon}>🌫️</Text>
+        </View>
+        <View style={[styles.lifetimeStat, { borderColor: EcoColors.green200 }]}>
+          <Text style={styles.lifetimeStatValue}>{lifetimeActiveDays}</Text>
+          <Text style={styles.lifetimeStatLabel}>Active{'\n'}Eco-Days</Text>
+          <Text style={styles.lifetimeStatIcon}>📅</Text>
+        </View>
+        <View style={[styles.lifetimeStat, { borderColor: EcoColors.catEnergy + '66' }]}>
+          <Text style={[styles.lifetimeStatValue, { color: EcoColors.catEnergy }]}>
+            {lifetimeTreesEquiv}
+          </Text>
+          <Text style={styles.lifetimeStatLabel}>Trees{'\n'}Equivalent</Text>
+          <Text style={styles.lifetimeStatIcon}>🌳</Text>
+        </View>
+      </View>
+
+      {/* Best streak card */}
+      <LinearGradient
+        colors={longestStreakEver >= 7
+          ? [EcoColors.catEnergy, '#f59e0b']
+          : [EcoColors.green600, EcoColors.green500]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.streakCard}>
+        <View style={styles.streakCardLeft}>
+          <Text style={styles.streakCardNum}>{longestStreakEver}</Text>
+          <Text style={styles.streakCardLabel}>day longest{'\n'}streak ever 🔥</Text>
+        </View>
+        <View style={styles.streakCardRight}>
+          <Text style={styles.streakCardHint}>
+            {longestStreakEver === 0
+              ? 'Log an action today to start your streak!'
+              : longestStreakEver < 7
+              ? `${7 - longestStreakEver} more days to unlock the 🔥 streak badge`
+              : longestStreakEver < 30
+              ? `${30 - longestStreakEver} more days to hit the 🚀 30-day milestone`
+              : 'Incredible consistency — you\'re a climate champion!'}
+          </Text>
+        </View>
+      </LinearGradient>
+
+      {/* Milestones */}
+      <View style={styles.milestonesCard}>
+        <View style={styles.milestonesHeaderRow}>
+          <Text style={styles.milestonesTitle}>Impact Milestones</Text>
+          <Text style={styles.milestonesCount}>{achieved}/{milestones.length}</Text>
+        </View>
+        {milestones.map(m => (
+          <View key={m.label} style={[styles.milestoneRow, m.done && styles.milestoneRowDone]}>
+            <Text style={styles.milestoneIcon}>{m.icon}</Text>
+            <Text style={[styles.milestoneLabel, m.done && styles.milestoneLabelDone]}>
+              {m.label}
+            </Text>
+            {m.done ? (
+              <Ionicons name="checkmark-circle" size={18} color={EcoColors.primary} />
+            ) : (
+              <View style={styles.milestoneEmpty} />
+            )}
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -217,42 +470,42 @@ function ProgressRing({ percentage, size = 100 }: { percentage: number; size?: n
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
+const TABS = ['This Week', 'My Actions', 'Lifetime'];
+
 export default function TrackerScreen() {
   const { state, dispatch } = useAppStore();
   const { activeActions, actionLogs } = state;
+
+  const [tabIndex, setTabIndex] = useState(0);
 
   const weekDates = useMemo(() => getWeekDates(), []);
   const today = todayStr();
 
   const encouragement = useMemo(() => {
-    const idx = new Date().getDate() % ENCOURAGING.length;
-    return ENCOURAGING[idx];
+    return ENCOURAGING[new Date().getDate() % ENCOURAGING.length];
   }, []);
 
   function logAction(actionId: string, completed: boolean) {
-    dispatch({
-      type: 'LOG_ACTION',
-      payload: { date: today, actionId, completed },
-    });
+    dispatch({ type: 'LOG_ACTION', payload: { date: today, actionId, completed } });
   }
 
-  // Stats
+  // ── Weekly stats ────────────────────────────────────────────────────────────
   const totalCommitted = activeActions.length;
+
   const todayDoneCount = activeActions.filter(id =>
     actionLogs.some(l => l.actionId === id && l.date === today && l.completed)
   ).length;
+
   const weeklyPossible = totalCommitted * 7;
   const weeklyDone = weekDates.reduce(
     (sum, date) =>
-      sum +
-      activeActions.filter(id =>
+      sum + activeActions.filter(id =>
         actionLogs.some(l => l.actionId === id && l.date === date && l.completed)
       ).length,
     0
   );
   const weeklyPct = weeklyPossible > 0 ? Math.round((weeklyDone / weeklyPossible) * 100) : 0;
 
-  // CO2 saved this week (rough estimate: daily / 7 * days done)
   const co2SavedWeek = parseFloat(
     activeActions
       .reduce((sum, id) => {
@@ -266,11 +519,33 @@ export default function TrackerScreen() {
       .toFixed(3)
   );
 
-  // Collective impact (if 1M people did this)
   const collectiveMT = parseFloat((co2SavedWeek * 1_000_000).toFixed(0));
 
-  // Best current streak across all active actions
-  const bestStreak = useMemo(() => {
+  // ── Lifetime stats ──────────────────────────────────────────────────────────
+  const lifetimeTotalActions = actionLogs.filter(l => l.completed).length;
+
+  const lifetimeCO2Saved = parseFloat(
+    actionLogs
+      .filter(l => l.completed)
+      .reduce((sum, log) => {
+        const action = ECO_ACTIONS.find(a => a.id === log.actionId);
+        return action ? sum + action.co2SavedPerYear / 365 : sum;
+      }, 0)
+      .toFixed(3)
+  );
+
+  const lifetimeActiveDays = new Set(
+    actionLogs.filter(l => l.completed).map(l => l.date)
+  ).size;
+
+  const lifetimeTreesEquiv = Math.round(lifetimeCO2Saved / 0.022);
+
+  const longestStreakEver = useMemo(() => {
+    const allActionIds = [...new Set(actionLogs.map(l => l.actionId))];
+    return allActionIds.reduce((best, id) => Math.max(best, getLongestStreakEver(actionLogs, id)), 0);
+  }, [actionLogs]);
+
+  const bestCurrentStreak = useMemo(() => {
     return activeActions.reduce((best, id) => {
       let streak = 0;
       const checkDate = new Date();
@@ -284,28 +559,31 @@ export default function TrackerScreen() {
     }, 0);
   }, [activeActions, actionLogs]);
 
+  // ── Share ──────────────────────────────────────────────────────────────────
   async function handleShare() {
     const name = state.userName ? `${state.userName}'s` : 'My';
-    const co2Display = co2SavedWeek > 0 ? `${co2SavedWeek} tons` : 'building momentum';
     const carsOff = Math.round(collectiveMT / 4.6).toLocaleString();
 
     const lines = [
-      `🌍 ${name} Weekly Eco Progress`,
+      `🌍 ${name} Eco Progress`,
       '',
-      `✅ Weekly actions: ${weeklyDone}/${weeklyPossible} completed (${weeklyPct}%)`,
-      `🌱 CO₂ saved this week: ${co2Display}`,
+      `📅 This week: ${weeklyDone}/${weeklyPossible} actions (${weeklyPct}%)`,
+      `🌱 CO₂ saved this week: ${co2SavedWeek > 0 ? `${co2SavedWeek} tons` : 'building momentum'}`,
       `⚡ Active eco-habits: ${totalCommitted}`,
-      `📅 Today: ${todayDoneCount}/${totalCommitted} done`,
+      '',
+      `🏆 Lifetime: ${lifetimeTotalActions} actions · ${lifetimeCO2Saved} tons CO₂ saved`,
+      `📅 Active eco-days: ${lifetimeActiveDays}`,
+      `🌳 Trees equivalent: ${lifetimeTreesEquiv}`,
     ];
 
-    if (bestStreak > 0) {
-      lines.push(`🔥 Best current streak: ${bestStreak} day${bestStreak !== 1 ? 's' : ''}`);
+    if (bestCurrentStreak > 0) {
+      lines.push(`🔥 Current streak: ${bestCurrentStreak} day${bestCurrentStreak !== 1 ? 's' : ''}`);
     }
 
     if (collectiveMT > 0) {
       lines.push(
         '',
-        `🌐 If 1 million people tracked like this, we'd save ${collectiveMT.toLocaleString()} metric tons of CO₂ — equal to taking ${carsOff} cars off the road for a year.`,
+        `🌐 If 1 million people tracked like this, we'd save ${collectiveMT.toLocaleString()} metric tons of CO₂ — equal to taking ${carsOff} cars off the road for a year.`
       );
     }
 
@@ -314,7 +592,7 @@ export default function TrackerScreen() {
     try {
       await Share.share({ message: lines.join('\n') });
     } catch {
-      // user cancelled or dismissed — no action needed
+      // user cancelled — no action needed
     }
   }
 
@@ -328,108 +606,44 @@ export default function TrackerScreen() {
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.headerTitle}>My Progress</Text>
-            <Text style={styles.headerSub}>Track your eco-actions week by week</Text>
+            <Text style={styles.headerSub}>Track your eco-actions & lifetime impact</Text>
           </View>
           <TouchableOpacity onPress={handleShare} style={styles.shareBtn} accessibilityLabel="Share my progress">
             <Ionicons name="share-outline" size={22} color="#fff" />
           </TouchableOpacity>
         </View>
+        <SegmentControl tabs={TABS} selected={tabIndex} onSelect={setTabIndex} />
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
-        {/* Encouraging message */}
-        <LinearGradient
-          colors={[EcoColors.green600, EcoColors.green500]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.encourageCard}>
-          <Ionicons name="leaf" size={20} color="#fff" />
-          <Text style={styles.encourageText}>{encouragement}</Text>
-        </LinearGradient>
-
-        {/* Stats row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{todayDoneCount}/{totalCommitted}</Text>
-            <Text style={styles.statLabel}>Done Today</Text>
-          </View>
-          <View style={styles.statCard}>
-            <ProgressRing percentage={weeklyPct} size={80} />
-          </View>
-          <View style={styles.statCard}>
-            <Text style={[styles.statValue, { color: EcoColors.secondary }]}>
-              {co2SavedWeek}
-            </Text>
-            <Text style={styles.statLabel}>tons saved</Text>
-            <Text style={styles.statSub}>this week</Text>
-          </View>
-        </View>
-
-        {/* Collective impact */}
-        <View style={styles.collectiveCard}>
-          <View style={styles.collectiveHeader}>
-            <Ionicons name="earth" size={20} color={EcoColors.secondary} />
-            <Text style={styles.collectiveTitle}>Collective Impact</Text>
-          </View>
-          <Text style={styles.collectiveText}>
-            If 1 million people tracked like you this week, we'd save{' '}
-            <Text style={styles.collectiveHighlight}>{collectiveMT.toLocaleString()} metric tons</Text>{' '}
-            of CO₂ — equivalent to taking{' '}
-            <Text style={styles.collectiveHighlight}>
-              {Math.round(collectiveMT / 4.6).toLocaleString()} cars
-            </Text>{' '}
-            off the road for a year.
-          </Text>
-        </View>
-
-        {/* Action tracker cards */}
-        {activeActions.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🌱</Text>
-            <Text style={styles.emptyTitle}>No actions yet</Text>
-            <Text style={styles.emptyText}>
-              Head to the Actions tab to commit to eco-habits, then track them here daily.
-            </Text>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.sectionTitle}>My Committed Actions</Text>
-            {activeActions.map(id => (
-              <ActionTrackerCard
-                key={id}
-                actionId={id}
-                logs={actionLogs}
-                weekDates={weekDates}
-                onLog={completed => logAction(id, completed)}
-              />
-            ))}
-          </>
+        {tabIndex === 0 && (
+          <ThisWeekTab
+            encouragement={encouragement}
+            todayDoneCount={todayDoneCount}
+            totalCommitted={totalCommitted}
+            weeklyPct={weeklyPct}
+            co2SavedWeek={co2SavedWeek}
+            collectiveMT={collectiveMT}
+          />
         )}
-
-        {/* Impact milestones */}
-        <View style={styles.milestonesCard}>
-          <Text style={styles.milestonesTitle}>Impact Milestones</Text>
-          {[
-            { icon: '🌱', label: 'First action logged', done: weeklyDone >= 1 },
-            { icon: '🔥', label: '7-day streak on any action', done: false },
-            { icon: '🌳', label: '10 actions logged total', done: weeklyDone >= 10 },
-            { icon: '⚡', label: 'Committed to 5+ actions', done: totalCommitted >= 5 },
-            { icon: '🌍', label: '0.1 ton CO₂ saved this week', done: co2SavedWeek >= 0.1 },
-          ].map(m => (
-            <View key={m.label} style={styles.milestoneRow}>
-              <Text style={styles.milestoneIcon}>{m.icon}</Text>
-              <Text style={[styles.milestoneLabel, m.done && styles.milestoneLabelDone]}>
-                {m.label}
-              </Text>
-              {m.done ? (
-                <Ionicons name="checkmark-circle" size={18} color={EcoColors.primary} />
-              ) : (
-                <View style={styles.milestoneEmpty} />
-              )}
-            </View>
-          ))}
-        </View>
+        {tabIndex === 1 && (
+          <MyActionsTab
+            activeActions={activeActions}
+            actionLogs={actionLogs}
+            weekDates={weekDates}
+            onLog={logAction}
+          />
+        )}
+        {tabIndex === 2 && (
+          <LifetimeTab
+            lifetimeTotalActions={lifetimeTotalActions}
+            lifetimeCO2Saved={lifetimeCO2Saved}
+            lifetimeActiveDays={lifetimeActiveDays}
+            lifetimeTreesEquiv={lifetimeTreesEquiv}
+            longestStreakEver={longestStreakEver}
+            totalCommitted={totalCommitted}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -437,15 +651,18 @@ export default function TrackerScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: EcoColors.background },
+
+  // Header
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 20,
+    paddingBottom: 10,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 14,
   },
   headerTitle: { fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
   headerSub: { fontSize: 13, color: EcoColors.green200, marginTop: 4 },
@@ -457,7 +674,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  content: { padding: 16, paddingBottom: 40, gap: 14 },
+
+  // Segment control
+  segmentWrap: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    borderRadius: 12,
+    padding: 3,
+    marginBottom: 4,
+  },
+  segmentItem: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  segmentItemActive: {
+    backgroundColor: '#fff',
+  },
+  segmentText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.75)',
+  },
+  segmentTextActive: {
+    color: EcoColors.green700 ?? EcoColors.green800,
+  },
+
+  // Shared layout
+  content: { paddingBottom: 40 },
+  tabContent: { padding: 16, gap: 14 },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: EcoColors.text,
+    marginBottom: 2,
+  },
+
+  // Encourage
   encourageCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -472,10 +726,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 20,
   },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
+
+  // Stats row
+  statsRow: { flexDirection: 'row', gap: 10 },
   statCard: {
     flex: 1,
     backgroundColor: EcoColors.white,
@@ -491,19 +744,11 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
-  statValue: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: EcoColors.primary,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: EcoColors.textMuted,
-    fontWeight: '500',
-    marginTop: 2,
-    textAlign: 'center',
-  },
+  statValue: { fontSize: 22, fontWeight: '900', color: EcoColors.primary },
+  statLabel: { fontSize: 11, color: EcoColors.textMuted, fontWeight: '500', marginTop: 2, textAlign: 'center' },
   statSub: { fontSize: 10, color: EcoColors.textMuted },
+
+  // Collective
   collectiveCard: {
     backgroundColor: EcoColors.white,
     borderRadius: 16,
@@ -516,54 +761,44 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
-  collectiveHeader: {
+  collectiveHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  collectiveTitle: { fontSize: 14, fontWeight: '700', color: EcoColors.secondary },
+  collectiveText: { fontSize: 13, color: EcoColors.text, lineHeight: 20 },
+  collectiveHighlight: { fontWeight: '700', color: EcoColors.secondary },
+
+  // My Actions tab
+  actionsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
-  },
-  collectiveTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: EcoColors.secondary,
-  },
-  collectiveText: {
-    fontSize: 13,
-    color: EcoColors.text,
-    lineHeight: 20,
-  },
-  collectiveHighlight: {
-    fontWeight: '700',
-    color: EcoColors.secondary,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: EcoColors.text,
+    justifyContent: 'space-between',
     marginBottom: 2,
   },
+  todayBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: EcoColors.primaryPale,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  todayBadgeText: { fontSize: 12, fontWeight: '600', color: EcoColors.primary },
+
+  // Tracker cards
   trackerCard: {
     backgroundColor: EcoColors.white,
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: EcoColors.border,
-    marginBottom: 0,
     shadowColor: EcoColors.green800,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
     elevation: 2,
   },
-  trackerCardDone: {
-    borderColor: EcoColors.green400,
-  },
-  trackerCardTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    gap: 10,
-  },
+  trackerCardDone: { borderColor: EcoColors.green400 },
+  trackerCardTop: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 },
   trackerEmoji: { fontSize: 24 },
   trackerInfo: { flex: 1 },
   trackerTitle: { fontSize: 14, fontWeight: '700', color: EcoColors.text },
@@ -577,27 +812,12 @@ const styles = StyleSheet.create({
   },
   streakNum: { fontSize: 16, fontWeight: '900' },
   streakLabel: { fontSize: 14, marginTop: -2 },
-  weekGrid: {
-    flexDirection: 'row',
-    paddingHorizontal: 12,
-    paddingBottom: 10,
-    gap: 4,
-  },
+  weekGrid: { flexDirection: 'row', paddingHorizontal: 12, paddingBottom: 10, gap: 4 },
   dayCol: { flex: 1, alignItems: 'center', gap: 4 },
   dayLabel: { fontSize: 9, color: EcoColors.textMuted, fontWeight: '500' },
   dayLabelToday: { color: EcoColors.primary, fontWeight: '700' },
-  dayCellOuter: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dayCellToday: {
-    borderWidth: 2,
-    borderColor: EcoColors.primary,
-    borderRadius: 8,
-  },
+  dayCellOuter: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  dayCellToday: { borderWidth: 2, borderColor: EcoColors.primary, borderRadius: 8 },
   dayCell: {
     width: 22,
     height: 22,
@@ -620,11 +840,9 @@ const styles = StyleSheet.create({
   logBtnDone: { backgroundColor: EcoColors.primaryPale },
   logBtnText: { fontSize: 13, color: EcoColors.textMuted, fontWeight: '600' },
   logBtnTextDone: { color: EcoColors.primary },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    gap: 10,
-  },
+
+  // Empty state
+  emptyState: { alignItems: 'center', paddingVertical: 60, gap: 10 },
   emptyEmoji: { fontSize: 48 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: EcoColors.text },
   emptyText: {
@@ -634,6 +852,59 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     maxWidth: 280,
   },
+
+  // Lifetime tab
+  lifetimeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  lifetimeStat: {
+    width: '47%',
+    backgroundColor: EcoColors.white,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1.5,
+    alignItems: 'flex-start',
+    shadowColor: EcoColors.green800,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 1,
+    gap: 2,
+  },
+  lifetimeStatValue: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: EcoColors.primary,
+    letterSpacing: -1,
+  },
+  lifetimeStatLabel: {
+    fontSize: 12,
+    color: EcoColors.textMuted,
+    fontWeight: '500',
+    lineHeight: 16,
+  },
+  lifetimeStatIcon: {
+    fontSize: 20,
+    marginTop: 4,
+  },
+
+  // Streak card
+  streakCard: {
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  streakCardLeft: { alignItems: 'center', minWidth: 60 },
+  streakCardNum: { fontSize: 36, fontWeight: '900', color: '#fff' },
+  streakCardLabel: { fontSize: 11, color: 'rgba(255,255,255,0.85)', fontWeight: '600', textAlign: 'center' },
+  streakCardRight: { flex: 1 },
+  streakCardHint: { fontSize: 13, color: 'rgba(255,255,255,0.9)', lineHeight: 19 },
+
+  // Milestones
   milestonesCard: {
     backgroundColor: EcoColors.white,
     borderRadius: 16,
@@ -641,20 +912,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: EcoColors.border,
   },
-  milestonesTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: EcoColors.text,
+  milestonesHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12,
+  },
+  milestonesTitle: { fontSize: 14, fontWeight: '700', color: EcoColors.text },
+  milestonesCount: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: EcoColors.primary,
+    backgroundColor: EcoColors.primaryPale,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 20,
   },
   milestoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderBottomWidth: 1,
     borderBottomColor: EcoColors.gray100,
   },
+  milestoneRowDone: { backgroundColor: EcoColors.primaryPale + '55' },
   milestoneIcon: { fontSize: 18, width: 26 },
   milestoneLabel: { flex: 1, fontSize: 13, color: EcoColors.textMuted },
   milestoneLabelDone: { color: EcoColors.text, fontWeight: '600' },
