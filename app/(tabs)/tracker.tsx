@@ -470,7 +470,7 @@ function LifetimeTab({
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
-const TABS = ['This Week', 'My Actions', 'Lifetime'];
+const TABS = ['My Actions', 'This Week', 'Lifetime'];
 
 export default function TrackerScreen() {
   const { state, dispatch } = useAppStore();
@@ -617,6 +617,14 @@ export default function TrackerScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {tabIndex === 0 && (
+          <MyActionsTab
+            activeActions={activeActions}
+            actionLogs={actionLogs}
+            weekDates={weekDates}
+            onLog={logAction}
+          />
+        )}
+        {tabIndex === 1 && (
           <ThisWeekTab
             encouragement={encouragement}
             todayDoneCount={todayDoneCount}
@@ -624,14 +632,6 @@ export default function TrackerScreen() {
             weeklyPct={weeklyPct}
             co2SavedWeek={co2SavedWeek}
             collectiveMT={collectiveMT}
-          />
-        )}
-        {tabIndex === 1 && (
-          <MyActionsTab
-            activeActions={activeActions}
-            actionLogs={actionLogs}
-            weekDates={weekDates}
-            onLog={logAction}
           />
         )}
         {tabIndex === 2 && (

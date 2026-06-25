@@ -10,6 +10,7 @@ export interface FootprintData {
   electricityKwhPerMonth: number;
   gasUsage: 'none' | 'low' | 'medium' | 'high';
   dietType: 'vegan' | 'vegetarian' | 'flexitarian' | 'omnivore' | 'heavy-meat';
+  foodWasteFrequency: 'rarely' | 'sometimes' | 'often';
   shoppingFrequency: 'minimal' | 'average' | 'frequent';
 }
 
@@ -45,6 +46,7 @@ export interface AppState {
   anthropicApiKey: string;
   viewedArticles: string[];
   viewedActionIds: string[];
+  tutorialSeen: boolean;
 }
 
 // ── Initial State ─────────────────────────────────────────────────────────────
@@ -56,6 +58,7 @@ const DEFAULT_FOOTPRINT: FootprintData = {
   electricityKwhPerMonth: 900,
   gasUsage: 'medium',
   dietType: 'omnivore',
+  foodWasteFrequency: 'sometimes',
   shoppingFrequency: 'average',
 };
 
@@ -70,6 +73,7 @@ const INITIAL_STATE: AppState = {
   anthropicApiKey: '',
   viewedArticles: [],
   viewedActionIds: [],
+  tutorialSeen: false,
 };
 
 // ── Actions ───────────────────────────────────────────────────────────────────
@@ -87,7 +91,8 @@ type AppAction =
   | { type: 'CLEAR_CHAT' }
   | { type: 'SET_API_KEY'; payload: string }
   | { type: 'MARK_ARTICLE_VIEWED'; payload: string }
-  | { type: 'MARK_ACTION_VIEWED'; payload: string };
+  | { type: 'MARK_ACTION_VIEWED'; payload: string }
+  | { type: 'SET_TUTORIAL_SEEN'; payload: boolean };
 
 function reducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
@@ -137,6 +142,8 @@ function reducer(state: AppState, action: AppAction): AppState {
           ? state.viewedActionIds
           : [...state.viewedActionIds, action.payload],
       };
+    case 'SET_TUTORIAL_SEEN':
+      return { ...state, tutorialSeen: action.payload };
     default:
       return state;
   }
@@ -149,12 +156,14 @@ const STORAGE_KEY = '@eco_app_state_v1';
 interface AppContextValue {
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
+  hydrated: boolean;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
+  const [hydrated, setHydrated] = React.useState(false);
 
   // Hydrate from storage on mount
   useEffect(() => {
@@ -167,6 +176,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // ignore corrupt data
         }
       }
+      setHydrated(true);
     });
   }, []);
 
@@ -175,7 +185,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
   }, [state]);
 
-  return <AppContext.Provider value={{ state, dispatch }}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={{ state, dispatch, hydrated }}>{children}</AppContext.Provider>;
 }
 
 export function useAppStore() {
@@ -202,6 +212,9 @@ const GAS_MULT: Record<FootprintData['gasUsage'], number> = {
 const DIET_TONS: Record<FootprintData['dietType'], number> = {
   vegan: 1.5, vegetarian: 1.7, flexitarian: 2.2, omnivore: 3.3, 'heavy-meat': 5.0,
 };
+const FOOD_WASTE_TONS: Record<FootprintData['foodWasteFrequency'], number> = {
+  rarely: 0.1, sometimes: 0.4, often: 0.9,
+};
 const SHOP_TONS: Record<FootprintData['shoppingFrequency'], number> = {
   minimal: 0.9, average: 2.3, frequent: 4.1,
 };
@@ -216,7 +229,7 @@ export function calculateFootprint(data: FootprintData): FootprintResult {
   const gasTons = GAS_MULT[data.gasUsage];
   const home = elecTons + gasTons;
 
-  const diet = DIET_TONS[data.dietType];
+  const diet = DIET_TONS[data.dietType] + FOOD_WASTE_TONS[data.foodWasteFrequency];
   const shopping = SHOP_TONS[data.shoppingFrequency];
 
   const total = transport + home + diet + shopping;

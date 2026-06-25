@@ -9,6 +9,7 @@ Theme: awareness and individual actionable steps.
 Style: green (a lot) and blue (less). 
 
 Functionality(most important): 
+Loading Screen - Contains a call to action and gives users a place to kick of from. Tutorial integrated here.
 Tab 1 - Basic environment news, current major environmental news, and an option to add blogs (for global awareness). 
 Tab 2 - Personal carbon footprint measure, other pollutant contribution measure, and personal earth consumption rate shown, etc. (for individual awareness). 
 Tab 3 - Actionable steps with background info, importance, and method shown with varying options such as composting, riding a bike, planting trees, eating less meat, etc. (for actionable steps). 

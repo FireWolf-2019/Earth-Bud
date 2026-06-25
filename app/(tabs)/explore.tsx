@@ -348,6 +348,16 @@ export default function FootprintScreen() {
                 selected={data.dietType}
                 onSelect={v => update('dietType', v as FootprintData['dietType'])}
               />
+              <OptionRow
+                label="How often do you throw away uneaten food?"
+                options={[
+                  { value: 'rarely', label: 'Rarely' },
+                  { value: 'sometimes', label: 'Sometimes' },
+                  { value: 'often', label: 'Often' },
+                ]}
+                selected={data.foodWasteFrequency}
+                onSelect={v => update('foodWasteFrequency', v as FootprintData['foodWasteFrequency'])}
+              />
             </View>
 
             {/* Shopping */}
