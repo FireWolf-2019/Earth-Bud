@@ -14,13 +14,11 @@ export interface FootprintData {
   shoppingFrequency: 'minimal' | 'average' | 'frequent';
 }
 
-export interface CustomBlog {
+export interface EduNote {
   id: string;
-  title: string;
-  author: string;
   content: string;
   date: string;
-  category: string;
+  moduleTag?: string;
 }
 
 export interface ActionLog {
@@ -39,12 +37,13 @@ export interface AppState {
   userName: string;
   footprintData: FootprintData;
   footprintCompleted: boolean;
-  customBlogs: CustomBlog[];
+  eduNotes: EduNote[];
+  completedModules: string[];
+  viewedModules: string[];
   activeActions: string[];
   actionLogs: ActionLog[];
   chatHistory: ChatMessage[];
   anthropicApiKey: string;
-  viewedArticles: string[];
   viewedActionIds: string[];
   tutorialSeen: boolean;
 }
@@ -66,12 +65,13 @@ const INITIAL_STATE: AppState = {
   userName: '',
   footprintData: DEFAULT_FOOTPRINT,
   footprintCompleted: false,
-  customBlogs: [],
+  eduNotes: [],
+  completedModules: [],
+  viewedModules: [],
   activeActions: [],
   actionLogs: [],
   chatHistory: [],
   anthropicApiKey: '',
-  viewedArticles: [],
   viewedActionIds: [],
   tutorialSeen: false,
 };
@@ -83,14 +83,16 @@ type AppAction =
   | { type: 'SET_USER_NAME'; payload: string }
   | { type: 'SET_FOOTPRINT'; payload: FootprintData }
   | { type: 'SET_FOOTPRINT_COMPLETED'; payload: boolean }
-  | { type: 'ADD_BLOG'; payload: CustomBlog }
-  | { type: 'DELETE_BLOG'; payload: string }
+  | { type: 'ADD_NOTE'; payload: EduNote }
+  | { type: 'UPDATE_NOTE'; payload: EduNote }
+  | { type: 'DELETE_NOTE'; payload: string }
+  | { type: 'MARK_MODULE_VIEWED'; payload: string }
+  | { type: 'COMPLETE_MODULE'; payload: string }
   | { type: 'TOGGLE_ACTION'; payload: string }
   | { type: 'LOG_ACTION'; payload: ActionLog }
   | { type: 'ADD_CHAT_MESSAGE'; payload: ChatMessage }
   | { type: 'CLEAR_CHAT' }
   | { type: 'SET_API_KEY'; payload: string }
-  | { type: 'MARK_ARTICLE_VIEWED'; payload: string }
   | { type: 'MARK_ACTION_VIEWED'; payload: string }
   | { type: 'SET_TUTORIAL_SEEN'; payload: boolean };
 
@@ -104,10 +106,29 @@ function reducer(state: AppState, action: AppAction): AppState {
       return { ...state, footprintData: action.payload };
     case 'SET_FOOTPRINT_COMPLETED':
       return { ...state, footprintCompleted: action.payload };
-    case 'ADD_BLOG':
-      return { ...state, customBlogs: [action.payload, ...state.customBlogs] };
-    case 'DELETE_BLOG':
-      return { ...state, customBlogs: state.customBlogs.filter(b => b.id !== action.payload) };
+    case 'ADD_NOTE':
+      return { ...state, eduNotes: [action.payload, ...state.eduNotes] };
+    case 'UPDATE_NOTE':
+      return {
+        ...state,
+        eduNotes: state.eduNotes.map(n => n.id === action.payload.id ? action.payload : n),
+      };
+    case 'DELETE_NOTE':
+      return { ...state, eduNotes: state.eduNotes.filter(n => n.id !== action.payload) };
+    case 'MARK_MODULE_VIEWED':
+      return {
+        ...state,
+        viewedModules: state.viewedModules.includes(action.payload)
+          ? state.viewedModules
+          : [...state.viewedModules, action.payload],
+      };
+    case 'COMPLETE_MODULE':
+      return {
+        ...state,
+        completedModules: state.completedModules.includes(action.payload)
+          ? state.completedModules
+          : [...state.completedModules, action.payload],
+      };
     case 'TOGGLE_ACTION': {
       const id = action.payload;
       const active = state.activeActions.includes(id)
@@ -128,13 +149,6 @@ function reducer(state: AppState, action: AppAction): AppState {
       return { ...state, chatHistory: [] };
     case 'SET_API_KEY':
       return { ...state, anthropicApiKey: action.payload };
-    case 'MARK_ARTICLE_VIEWED':
-      return {
-        ...state,
-        viewedArticles: state.viewedArticles.includes(action.payload)
-          ? state.viewedArticles
-          : [...state.viewedArticles, action.payload],
-      };
     case 'MARK_ACTION_VIEWED':
       return {
         ...state,
@@ -443,108 +457,3 @@ export const ECO_ACTIONS: EcoAction[] = [
   },
 ];
 
-// ── News Data ─────────────────────────────────────────────────────────────────
-
-export interface NewsArticle {
-  id: string;
-  title: string;
-  source: string;
-  date: string;
-  category: string;
-  summary: string;
-  readTime: string;
-  isUserBlog?: boolean;
-}
-
-export const MOCK_NEWS: NewsArticle[] = [
-  {
-    id: 'n1',
-    title: 'Global Renewable Energy Capacity Surpasses Coal for the First Time',
-    source: 'Clean Energy Monitor',
-    date: '2026-06-15',
-    category: 'Energy',
-    summary: 'The International Energy Agency reports that installed renewable energy capacity has crossed 4,000 GW globally, overtaking coal for the first time in history. Solar alone added 450 GW in 2025, driven by rapid cost declines and government incentives across 80 countries.',
-    readTime: '4 min',
-  },
-  {
-    id: 'n2',
-    title: 'Amazon Rainforest Shows Signs of Recovery in Key Protected Zones',
-    source: 'Environmental Science Journal',
-    date: '2026-06-14',
-    category: 'Wildlife',
-    summary: 'New satellite imagery and ground surveys reveal that deforestation in the Brazilian Amazon fell by 32% in 2025 compared to the previous year. Protected indigenous territories show the strongest recovery, with canopy cover increasing and biodiversity returning in previously degraded areas.',
-    readTime: '5 min',
-  },
-  {
-    id: 'n3',
-    title: 'Ocean Plastic Cleanup Project Removes 10 Million Pounds from Pacific',
-    source: 'Ocean Health Network',
-    date: '2026-06-13',
-    category: 'Ocean',
-    summary: 'The Ocean Cleanup organization announced a landmark achievement, having removed over 10 million pounds of plastic from the Great Pacific Garbage Patch. Their latest autonomous systems intercepted plastic before it entered ocean gyres, preventing an estimated 40% more waste from accumulating.',
-    readTime: '3 min',
-  },
-  {
-    id: 'n4',
-    title: 'UN Climate Summit Sets Ambitious 2035 Methane Reduction Targets',
-    source: 'Global Policy Review',
-    date: '2026-06-12',
-    category: 'Policy',
-    summary: '140 nations signed the landmark Geneva Methane Accord, pledging to cut methane emissions by 45% from 2020 levels by 2035. Methane is 80× more potent than CO₂ over 20 years, and experts say rapid reductions are the fastest path to slowing near-term warming.',
-    readTime: '6 min',
-  },
-  {
-    id: 'n5',
-    title: 'Record-Breaking Coral Reef Restoration Off Florida Keys',
-    source: 'Marine Ecology Today',
-    date: '2026-06-11',
-    category: 'Ocean',
-    summary: 'Scientists have successfully transplanted over 100,000 heat-resistant coral fragments to the Florida Reef Tract, the largest coral restoration effort in US history. The heat-tolerant coral strains were selectively bred to survive the warmer ocean temperatures projected through 2050.',
-    readTime: '4 min',
-  },
-  {
-    id: 'n6',
-    title: 'Electric Vehicle Sales Hit 40% of New Car Market in Europe',
-    source: 'Mobility Futures',
-    date: '2026-06-10',
-    category: 'Energy',
-    summary: 'Europe crossed a major milestone as EV sales reached 40% market share in May 2026, up from 25% a year prior. Norway leads with 95% EV adoption. Analysts attribute the surge to competitive pricing, expanded charging infrastructure, and new EU regulations phasing out combustion engines by 2030.',
-    readTime: '4 min',
-  },
-  {
-    id: 'n7',
-    title: 'New Study: Urban Trees Cut Heat-Related Deaths by 36%',
-    source: 'Public Health & Environment',
-    date: '2026-06-09',
-    category: 'Climate',
-    summary: 'A landmark study across 93 cities found that urban tree canopy coverage reduced heat-related mortality by up to 36% during extreme heat events. Cities with over 30% tree cover showed the strongest effects. Researchers recommend tree-planting as a critical climate adaptation strategy.',
-    readTime: '5 min',
-  },
-  {
-    id: 'n8',
-    title: 'India Hits 500 GW Renewable Energy Milestone Ahead of Schedule',
-    source: 'Asia Climate Report',
-    date: '2026-06-08',
-    category: 'Energy',
-    summary: 'India reached 500 gigawatts of installed renewable capacity, meeting its 2030 target four years early. The country now generates 45% of its electricity from clean sources. A new national plan targets 1,000 GW by 2030, alongside massive investments in green hydrogen and battery storage.',
-    readTime: '3 min',
-  },
-  {
-    id: 'n9',
-    title: 'Wildfires in Canada Burn Record 8 Million Acres; Smoke Reaches Europe',
-    source: 'Climate Crisis Wire',
-    date: '2026-06-07',
-    category: 'Climate',
-    summary: 'An unprecedented early wildfire season in Canada has already burned 8 million acres by June, fueled by record spring temperatures and drought conditions linked to climate change. Air quality alerts have been issued across 12 US states, and smoke plumes have reached as far as Western Europe.',
-    readTime: '5 min',
-  },
-  {
-    id: 'n10',
-    title: 'Regenerative Agriculture Expanding Rapidly Across US Midwest',
-    source: 'Sustainable Farming Weekly',
-    date: '2026-06-06',
-    category: 'Wildlife',
-    summary: 'Over 2 million acres of Midwest farmland have transitioned to regenerative practices including cover cropping, reduced tillage, and rotational grazing. Early data shows a 20–30% increase in soil carbon sequestration and significant improvements in soil health, water retention, and biodiversity.',
-    readTime: '4 min',
-  },
-];

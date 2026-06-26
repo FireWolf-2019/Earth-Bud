@@ -26,7 +26,7 @@ import {
 
 // Build context-aware suggested queries from user state
 function getSuggestedQueries(
-  viewedArticles: string[],
+  viewedModules: string[],
   viewedActionIds: string[],
   activeActions: string[],
   footprintCompleted: boolean
@@ -45,8 +45,8 @@ function getSuggestedQueries(
     }
   }
 
-  if (viewedArticles.length > 0) {
-    suggestions.push('What are the biggest environmental issues right now?');
+  if (viewedModules.length > 0) {
+    suggestions.push('Tell me more about how Earth\'s systems are connected.');
   }
 
   if (viewedActionIds.length > 0) {
@@ -104,8 +104,8 @@ function buildSystemPrompt(state: AppState): string {
     lines.push('- No eco-actions committed yet');
   }
 
-  if (state.viewedArticles.length > 0) {
-    lines.push(`- Has read ${state.viewedArticles.length} news article(s) in the app`);
+  if (state.viewedModules.length > 0) {
+    lines.push(`- Has explored ${state.viewedModules.length} education module(s) in the app`);
   }
 
   if (state.viewedActionIds.length > 0) {
@@ -242,7 +242,7 @@ export default function ChatScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   const suggestions = getSuggestedQueries(
-    state.viewedArticles,
+    state.viewedModules,
     state.viewedActionIds,
     state.activeActions,
     state.footprintCompleted
