@@ -46,12 +46,12 @@ const SLIDES: Slide[] = [
     body: 'Every environmental challenge begins with a lack of awareness and ends with collective action. This app is your bridge between knowing the problem and doing something about it.',
   },
   {
-    id: 'news',
-    icon: '📰',
+    id: 'learn',
+    icon: '📚',
     gradient: ['#14532D', '#15803D'],
-    pill: 'Tab 1 — News',
-    title: 'Stay informed',
-    body: 'Surface major environmental stories as they unfold — from climate shifts to biodiversity wins. Add your own blogs and share perspectives with the community.',
+    pill: 'Tab 1 — Learn',
+    title: 'Understand the planet',
+    body: 'Explore concise breakdowns of global climate change, dive into interactive tutorials on major earth systems, and take notes as you build your environmental knowledge.',
   },
   {
     id: 'footprint',

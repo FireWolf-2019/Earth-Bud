@@ -22,6 +22,13 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const CATEGORIES = ['All', 'Food', 'Transport', 'Home', 'Lifestyle'];
+const DIFFICULTIES = ['All', 'Easy', 'Medium', 'Hard'];
+
+const DIFFICULTY_FILTER_COLORS: Record<string, string> = {
+  Easy:   EcoColors.success,
+  Medium: EcoColors.warning,
+  Hard:   EcoColors.danger,
+};
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   Easy:   EcoColors.success,
@@ -165,11 +172,13 @@ function ActionCard({
 export default function ActionsScreen() {
   const { state, dispatch } = useAppStore();
   const [activeCategory, setActiveCategory] = useState('All');
+  const [activeDifficulty, setActiveDifficulty] = useState('All');
 
-  const filtered =
-    activeCategory === 'All'
-      ? ECO_ACTIONS
-      : ECO_ACTIONS.filter(a => a.category === activeCategory);
+  const filtered = ECO_ACTIONS.filter(a => {
+    const catMatch = activeCategory === 'All' || a.category === activeCategory;
+    const diffMatch = activeDifficulty === 'All' || a.difficulty === activeDifficulty;
+    return catMatch && diffMatch;
+  });
 
   const totalPotentialSavings = filtered.reduce((sum, a) => sum + a.co2SavedPerYear, 0);
   const committedCount = state.activeActions.filter(id =>
@@ -214,7 +223,7 @@ export default function ActionsScreen() {
         </View>
       </LinearGradient>
 
-      {/* Category filter */}
+      {/* Filters */}
       <View style={styles.filterBar}>
         <ScrollView
           horizontal
@@ -238,6 +247,35 @@ export default function ActionsScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        <View style={styles.diffFilterRow}>
+          {DIFFICULTIES.map(diff => {
+            const isActive = activeDifficulty === diff;
+            const color = DIFFICULTY_FILTER_COLORS[diff];
+            return (
+              <TouchableOpacity
+                key={diff}
+                onPress={() => setActiveDifficulty(diff)}
+                style={[
+                  styles.diffChip,
+                  isActive && color
+                    ? { backgroundColor: color + '22', borderColor: color }
+                    : isActive
+                    ? styles.diffChipActiveAll
+                    : null,
+                ]}>
+                {color && <View style={[styles.diffDot, { backgroundColor: color }]} />}
+                <Text
+                  style={[
+                    styles.diffChipText,
+                    isActive && { color: color ?? EcoColors.primary, fontWeight: '700' },
+                  ]}>
+                  {diff}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
@@ -330,6 +368,33 @@ const styles = StyleSheet.create({
   catIcon: { fontSize: 14 },
   filterChipText: { fontSize: 13, fontWeight: '500', color: EcoColors.textSecondary },
   filterChipTextActive: { color: '#fff' },
+  diffFilterRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    gap: 8,
+  },
+  diffChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: EcoColors.green50,
+    borderWidth: 1,
+    borderColor: EcoColors.border,
+    gap: 5,
+  },
+  diffChipActiveAll: {
+    backgroundColor: EcoColors.primaryPale,
+    borderColor: EcoColors.primary,
+  },
+  diffDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  diffChipText: { fontSize: 12, fontWeight: '500', color: EcoColors.textSecondary },
   list: { padding: 16, paddingBottom: 40 },
   categoryBanner: {
     backgroundColor: EcoColors.primaryPale,

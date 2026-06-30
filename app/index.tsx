@@ -13,41 +13,6 @@ import {
 import { EcoColors } from '@/constants/theme';
 import { useAppStore } from '@/store/app-store';
 
-type TabRoute =
-  | '/(tabs)'
-  | '/(tabs)/explore'
-  | '/(tabs)/actions'
-  | '/(tabs)/tracker'
-  | '/(tabs)/chat';
-
-const TABS: { emoji: string; label: string; desc: string; route: TabRoute }[] = [
-  { emoji: '📰', label: 'News',      desc: "Today's eco news",    route: '/(tabs)' },
-  { emoji: '🌿', label: 'Footprint', desc: 'Measure your impact', route: '/(tabs)/explore' },
-  { emoji: '⚡', label: 'Actions',   desc: 'Habits that help',    route: '/(tabs)/actions' },
-  { emoji: '📊', label: 'Tracker',   desc: 'Your progress',       route: '/(tabs)/tracker' },
-  { emoji: '🤖', label: 'EcoBot',    desc: 'AI eco-assistant',    route: '/(tabs)/chat' },
-];
-
-function TabCard({
-  emoji,
-  label,
-  desc,
-  onPress,
-}: {
-  emoji: string;
-  label: string;
-  desc: string;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity activeOpacity={0.82} onPress={onPress} style={styles.card}>
-      <Text style={styles.cardEmoji}>{emoji}</Text>
-      <Text style={styles.cardLabel}>{label}</Text>
-      <Text style={styles.cardDesc}>{desc}</Text>
-    </TouchableOpacity>
-  );
-}
-
 export default function LaunchScreen() {
   const { state, hydrated } = useAppStore();
 
@@ -77,25 +42,24 @@ export default function LaunchScreen() {
           <Text style={styles.heroEmoji}>🌍</Text>
           <Text style={styles.heroLine}>Your planet.</Text>
           <Text style={styles.heroLine}>Your impact.</Text>
-          <Text style={styles.heroSub}>Where would you like to start?</Text>
+          <Text style={styles.heroSub}>
+            Every journey starts with understanding the problem.
+          </Text>
         </View>
 
-        {/* Launch cards */}
-        <View style={styles.grid}>
-          <View style={styles.row}>
-            {TABS.slice(0, 2).map(tab => (
-              <TabCard key={tab.label} {...tab} onPress={() => router.replace(tab.route)} />
-            ))}
+        {/* Single start button */}
+        <TouchableOpacity
+          style={styles.startBtn}
+          onPress={() => router.replace('/(tabs)')}
+          activeOpacity={0.85}>
+          <Text style={styles.startEmoji}>📚</Text>
+          <View style={styles.startTextGroup}>
+            <Text style={styles.startLabel}>Begin Learning</Text>
+            <Text style={styles.startDesc}>Understand the planet first</Text>
           </View>
-          <View style={styles.row}>
-            {TABS.slice(2, 4).map(tab => (
-              <TabCard key={tab.label} {...tab} onPress={() => router.replace(tab.route)} />
-            ))}
-          </View>
-          <View style={styles.row}>
-            <TabCard {...TABS[4]} onPress={() => router.replace(TABS[4].route)} />
-          </View>
-        </View>
+          <Ionicons name="arrow-forward-outline" size={22} color={EcoColors.green800} />
+        </TouchableOpacity>
+
       </LinearGradient>
     </SafeAreaView>
   );
@@ -109,7 +73,7 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingBottom: 32,
+    paddingBottom: 36,
   },
   tutorialBtn: {
     position: 'absolute',
@@ -124,7 +88,7 @@ const styles = StyleSheet.create({
     paddingTop: 24,
   },
   heroEmoji: {
-    fontSize: 96,
+    fontSize: 100,
     marginBottom: 28,
   },
   heroLine: {
@@ -137,41 +101,40 @@ const styles = StyleSheet.create({
   heroSub: {
     fontSize: 15,
     color: EcoColors.green200,
-    marginTop: 16,
+    marginTop: 20,
     fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 12,
   },
-  grid: {
-    gap: 10,
-  },
-  row: {
+  startBtn: {
     flexDirection: 'row',
-    gap: 8,
-  },
-  card: {
-    flex: 1,
-    backgroundColor: EcoColors.green200,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
     alignItems: 'center',
-    gap: 4,
+    backgroundColor: EcoColors.green200,
+    borderRadius: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    gap: 14,
     shadowColor: EcoColors.green900,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  cardEmoji: {
-    fontSize: 24,
+  startEmoji: {
+    fontSize: 32,
   },
-  cardLabel: {
-    fontSize: 14,
+  startTextGroup: {
+    flex: 1,
+  },
+  startLabel: {
+    fontSize: 17,
     fontWeight: '800',
     color: EcoColors.green800,
   },
-  cardDesc: {
-    fontSize: 12,
+  startDesc: {
+    fontSize: 13,
     color: EcoColors.textMuted,
-    textAlign: 'center',
+    marginTop: 2,
   },
 });
