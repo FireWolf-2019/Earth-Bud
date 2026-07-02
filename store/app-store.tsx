@@ -43,7 +43,6 @@ export interface AppState {
   activeActions: string[];
   actionLogs: ActionLog[];
   chatHistory: ChatMessage[];
-  anthropicApiKey: string;
   viewedActionIds: string[];
   tutorialSeen: boolean;
 }
@@ -71,7 +70,6 @@ const INITIAL_STATE: AppState = {
   activeActions: [],
   actionLogs: [],
   chatHistory: [],
-  anthropicApiKey: '',
   viewedActionIds: [],
   tutorialSeen: false,
 };
@@ -92,7 +90,6 @@ type AppAction =
   | { type: 'LOG_ACTION'; payload: ActionLog }
   | { type: 'ADD_CHAT_MESSAGE'; payload: ChatMessage }
   | { type: 'CLEAR_CHAT' }
-  | { type: 'SET_API_KEY'; payload: string }
   | { type: 'MARK_ACTION_VIEWED'; payload: string }
   | { type: 'SET_TUTORIAL_SEEN'; payload: boolean };
 
@@ -147,8 +144,6 @@ function reducer(state: AppState, action: AppAction): AppState {
       return { ...state, chatHistory: [...state.chatHistory.slice(-49), action.payload] };
     case 'CLEAR_CHAT':
       return { ...state, chatHistory: [] };
-    case 'SET_API_KEY':
-      return { ...state, anthropicApiKey: action.payload };
     case 'MARK_ACTION_VIEWED':
       return {
         ...state,

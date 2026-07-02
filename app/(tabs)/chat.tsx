@@ -24,6 +24,8 @@ import {
   ChatMessage,
 } from '@/store/app-store';
 
+const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY ?? '';
+
 // Build context-aware suggested queries from user state
 function getSuggestedQueries(
   viewedModules: string[],
@@ -73,7 +75,7 @@ function buildSystemPrompt(state: AppState): string {
   const lines: string[] = [
     'You are EcoBot, a friendly and knowledgeable environmental AI assistant built into a sustainability app.',
     'Help users understand environmental issues, take action, and build sustainable habits.',
-    'Be encouraging, clear, and practical. Keep responses concise and mobile-friendly (under 200 words unless the user asks for detail).',
+    'Be encouraging, clear, and practical. Keep responses short and mobile-friendly (under 80 words). If the user explicitly asks for more detail, you may expand.',
     'Use emojis sparingly to make responses engaging.',
     '',
     '## User Context',
@@ -120,99 +122,6 @@ function buildSystemPrompt(state: AppState): string {
   return lines.join('\n');
 }
 
-// ── API Key Setup Screen ──────────────────────────────────────────────────────
-
-function ApiKeySetup({ onSave }: { onSave: (key: string) => void }) {
-  const [key, setKey] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  function handleSave() {
-    const trimmed = key.trim();
-    if (!trimmed.startsWith('sk-ant-')) {
-      Alert.alert(
-        'Invalid Key',
-        'Please enter a valid Anthropic API key. It should start with "sk-ant-".'
-      );
-      return;
-    }
-    setSaving(true);
-    onSave(trimmed);
-  }
-
-  const STEPS = [
-    'Go to console.anthropic.com',
-    'Sign in or create a free account',
-    'Navigate to API Keys and create one',
-    'Paste it below and tap Connect',
-  ];
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={[EcoColors.green800, EcoColors.green600]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}>
-        <Text style={styles.headerTitle}>EcoBot</Text>
-        <Text style={styles.headerSub}>Your AI sustainability assistant</Text>
-      </LinearGradient>
-
-      <ScrollView
-        contentContainerStyle={styles.setupContent}
-        showsVerticalScrollIndicator={false}>
-        <View style={styles.setupIcon}>
-          <Text style={styles.setupIconText}>🌿</Text>
-        </View>
-        <Text style={styles.setupTitle}>Connect Your AI Assistant</Text>
-        <Text style={styles.setupBody}>
-          EcoBot uses Claude AI to answer your environmental questions and give personalized
-          sustainability advice based on your footprint and eco-actions.
-        </Text>
-
-        <View style={styles.setupSteps}>
-          {STEPS.map((step, i) => (
-            <View key={i} style={styles.setupStep}>
-              <View style={styles.setupStepNum}>
-                <Text style={styles.setupStepNumText}>{i + 1}</Text>
-              </View>
-              <Text style={styles.setupStepText}>{step}</Text>
-            </View>
-          ))}
-        </View>
-
-        <TextInput
-          style={styles.apiKeyInput}
-          placeholder="sk-ant-api03-..."
-          placeholderTextColor={EcoColors.textMuted}
-          value={key}
-          onChangeText={setKey}
-          autoCapitalize="none"
-          autoCorrect={false}
-          secureTextEntry
-        />
-
-        <TouchableOpacity
-          style={[styles.connectBtn, (!key.trim() || saving) && styles.connectBtnDisabled]}
-          onPress={handleSave}
-          disabled={!key.trim() || saving}>
-          {saving ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <>
-              <Ionicons name="leaf" size={18} color="#fff" />
-              <Text style={styles.connectBtnText}>Connect EcoBot</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        <Text style={styles.setupNote}>
-          Your key is stored locally on your device and only sent to Anthropic's API.
-        </Text>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
 // ── Chat Bubble ───────────────────────────────────────────────────────────────
 
 function ChatBubble({ message }: { message: ChatMessage }) {
@@ -254,10 +163,6 @@ export default function ChatScreen() {
     }
   }, [state.chatHistory.length]);
 
-  function saveApiKey(key: string) {
-    dispatch({ type: 'SET_API_KEY', payload: key });
-  }
-
   async function sendMessage(text: string) {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
@@ -273,23 +178,22 @@ export default function ChatScreen() {
     dispatch({ type: 'ADD_CHAT_MESSAGE', payload: userMsg });
 
     try {
-      const conversationMessages = [
+      const messages = [
+        { role: 'system', content: buildSystemPrompt(state) },
         ...state.chatHistory.map(m => ({ role: m.role, content: m.content })),
-        { role: 'user' as const, content: trimmed },
+        { role: 'user', content: trimmed },
       ];
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'x-api-key': state.anthropicApiKey,
-          'anthropic-version': '2023-06-01',
-          'content-type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 1024,
-          system: buildSystemPrompt(state),
-          messages: conversationMessages,
+          model: 'gpt-4o-mini',
+          max_tokens: 300,
+          messages,
         }),
       });
 
@@ -299,13 +203,10 @@ export default function ChatScreen() {
       }
 
       const data = await response.json() as {
-        content: Array<{ type: string; text: string }>;
+        choices: Array<{ message: { content: string } }>;
       };
 
-      const replyText = data.content
-        .filter(c => c.type === 'text')
-        .map(c => c.text)
-        .join('');
+      const replyText = data.choices[0]?.message?.content ?? '';
 
       const assistantMsg: ChatMessage = {
         role: 'assistant',
@@ -325,18 +226,7 @@ export default function ChatScreen() {
   }
 
   function clearChat() {
-    Alert.alert('Clear Chat', 'Are you sure you want to clear the conversation?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Clear',
-        style: 'destructive',
-        onPress: () => dispatch({ type: 'CLEAR_CHAT' }),
-      },
-    ]);
-  }
-
-  if (!state.anthropicApiKey) {
-    return <ApiKeySetup onSave={saveApiKey} />;
+    dispatch({ type: 'CLEAR_CHAT' });
   }
 
   const showWelcome = state.chatHistory.length === 0;
@@ -355,7 +245,7 @@ export default function ChatScreen() {
             <Text style={styles.headerSub}>AI sustainability assistant</Text>
           </View>
           <TouchableOpacity onPress={clearChat} style={styles.clearBtn}>
-            <Ionicons name="trash-outline" size={20} color="rgba(255,255,255,0.8)" />
+            <Ionicons name="close-outline" size={24} color="rgba(255,255,255,0.8)" />
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -370,7 +260,8 @@ export default function ChatScreen() {
           ref={scrollRef}
           style={styles.messages}
           contentContainerStyle={styles.messagesContent}
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+          keyboardDismissMode="on-drag">
 
           {showWelcome && (
             <View style={styles.welcomeSection}>
@@ -417,24 +308,27 @@ export default function ChatScreen() {
 
         {/* Input bar */}
         <View style={styles.inputBar}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Ask EcoBot anything…"
-            placeholderTextColor={EcoColors.textMuted}
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-            maxLength={500}
-            returnKeyType="send"
-            onSubmitEditing={() => sendMessage(inputText)}
-            blurOnSubmit={false}
-          />
-          <TouchableOpacity
-            style={[styles.sendBtn, (!inputText.trim() || loading) && styles.sendBtnDisabled]}
-            onPress={() => sendMessage(inputText)}
-            disabled={!inputText.trim() || loading}>
-            <Ionicons name="send" size={17} color="#fff" />
-          </TouchableOpacity>
+          <View style={styles.inputRow}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Ask EcoBot anything…"
+              placeholderTextColor={EcoColors.textMuted}
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={500}
+              returnKeyType="send"
+              onSubmitEditing={() => sendMessage(inputText)}
+              blurOnSubmit={false}
+            />
+            <TouchableOpacity
+              style={[styles.sendBtn, (!inputText.trim() || loading) && styles.sendBtnDisabled]}
+              onPress={() => sendMessage(inputText)}
+              disabled={!inputText.trim() || loading}>
+              <Ionicons name="send" size={17} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.tempNotice}>Chats are temporary — tap ✕ to clear anytime.</Text>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -470,99 +364,6 @@ const styles = StyleSheet.create({
   clearBtn: {
     padding: 8,
     marginTop: 4,
-  },
-
-  // API key setup
-  setupContent: {
-    padding: 24,
-    paddingBottom: 48,
-    alignItems: 'center',
-  },
-  setupIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: EcoColors.primaryPale,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-    marginBottom: 16,
-  },
-  setupIconText: { fontSize: 36 },
-  setupTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: EcoColors.text,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  setupBody: {
-    fontSize: 14,
-    color: EcoColors.textSecondary,
-    lineHeight: 21,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  setupSteps: {
-    width: '100%',
-    backgroundColor: EcoColors.white,
-    borderRadius: 16,
-    padding: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: EcoColors.border,
-    marginBottom: 20,
-  },
-  setupStep: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  setupStepNum: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: EcoColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  setupStepNumText: { color: '#fff', fontSize: 12, fontWeight: '800' },
-  setupStepText: {
-    flex: 1,
-    fontSize: 13,
-    color: EcoColors.text,
-    lineHeight: 18,
-  },
-  apiKeyInput: {
-    width: '100%',
-    backgroundColor: EcoColors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: EcoColors.border,
-    padding: 14,
-    fontSize: 14,
-    color: EcoColors.text,
-    marginBottom: 16,
-  },
-  connectBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: EcoColors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    width: '100%',
-    marginBottom: 16,
-  },
-  connectBtnDisabled: { opacity: 0.5 },
-  connectBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  setupNote: {
-    fontSize: 12,
-    color: EcoColors.textMuted,
-    textAlign: 'center',
-    lineHeight: 17,
   },
 
   // Messages area
@@ -693,17 +494,26 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
+  tempNotice: {
+    fontSize: 11,
+    color: EcoColors.textMuted,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+
   // Input bar
   inputBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 10,
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: Platform.OS === 'ios' ? 12 : 16,
     backgroundColor: EcoColors.white,
     borderTopWidth: 1,
     borderTopColor: EcoColors.border,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 10,
   },
   textInput: {
     flex: 1,

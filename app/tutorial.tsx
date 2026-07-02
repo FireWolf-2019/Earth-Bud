@@ -204,7 +204,7 @@ export default function TutorialScreen() {
 
   function finish() {
     dispatch({ type: 'SET_TUTORIAL_SEEN', payload: true });
-    router.replace('/');
+    router.replace('/(tabs)/');
   }
 
   function goNext() {
