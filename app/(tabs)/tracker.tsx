@@ -2,7 +2,6 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useMemo, useState } from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   Share,
   StyleSheet,
@@ -10,14 +9,25 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EcoColors } from '@/constants/theme';
 import { ActionLog, ECO_ACTIONS, useAppStore } from '@/store/app-store';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Local calendar date as 'YYYY-MM-DD'. Using toISOString() here would be UTC,
+// which flips to the next day in the evening for users west of UTC and breaks
+// daily logging / streaks. Always compute against the device's local date.
+function toLocalISO(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function todayStr() {
-  return new Date().toISOString().split('T')[0];
+  return toLocalISO(new Date());
 }
 
 function getWeekDates(): string[] {
@@ -27,12 +37,13 @@ function getWeekDates(): string[] {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today);
     d.setDate(today.getDate() + mondayOffset + i);
-    return d.toISOString().split('T')[0];
+    return toLocalISO(d);
   });
 }
 
 function getDayLabel(dateIso: string): string {
-  const d = new Date(dateIso);
+  // Append time so the 'YYYY-MM-DD' string parses as local midnight, not UTC.
+  const d = new Date(`${dateIso}T00:00:00`);
   const today = todayStr();
   if (dateIso === today) return 'Today';
   return d.toLocaleDateString('en-US', { weekday: 'short' });
@@ -138,7 +149,7 @@ function ActionTrackerCard({
   let streak = 0;
   const checkDate = new Date();
   while (true) {
-    const ds = checkDate.toISOString().split('T')[0];
+    const ds = toLocalISO(checkDate);
     const done = logs.some(l => l.actionId === actionId && l.date === ds && l.completed);
     if (!done) break;
     streak++;
@@ -550,7 +561,7 @@ export default function TrackerScreen() {
       let streak = 0;
       const checkDate = new Date();
       while (true) {
-        const ds = checkDate.toISOString().split('T')[0];
+        const ds = toLocalISO(checkDate);
         if (!actionLogs.some(l => l.actionId === id && l.date === ds && l.completed)) break;
         streak++;
         checkDate.setDate(checkDate.getDate() - 1);

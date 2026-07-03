@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -24,7 +24,9 @@ import {
   ChatMessage,
 } from '@/store/app-store';
 
-const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY ?? '';
+// Base URL of our server-side proxy (see /api/chat.ts). The OpenAI key lives on
+// the server, never in this bundle. Set EXPO_PUBLIC_API_URL in .env.
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? '';
 
 // Build context-aware suggested queries from user state
 function getSuggestedQueries(
@@ -167,6 +169,14 @@ export default function ChatScreen() {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
 
+    if (!API_URL) {
+      Alert.alert(
+        'EcoBot Unavailable',
+        'The assistant is not configured yet. Set EXPO_PUBLIC_API_URL to your deployed proxy URL.'
+      );
+      return;
+    }
+
     setInputText('');
     setLoading(true);
 
@@ -184,42 +194,30 @@ export default function ChatScreen() {
         { role: 'user', content: trimmed },
       ];
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          max_tokens: 300,
-          messages,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages }),
       });
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({})) as { error?: { message?: string } };
-        throw new Error(errData?.error?.message ?? `HTTP ${response.status}`);
-      }
-
-      const data = await response.json() as {
-        choices: Array<{ message: { content: string } }>;
+      const data = await response.json().catch(() => ({})) as {
+        reply?: string;
+        error?: string;
       };
 
-      const replyText = data.choices[0]?.message?.content ?? '';
+      if (!response.ok) {
+        throw new Error(data?.error ?? `HTTP ${response.status}`);
+      }
 
       const assistantMsg: ChatMessage = {
         role: 'assistant',
-        content: replyText,
+        content: data.reply ?? '',
         timestamp: Date.now(),
       };
       dispatch({ type: 'ADD_CHAT_MESSAGE', payload: assistantMsg });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
-      Alert.alert(
-        'EcoBot Error',
-        `Could not get a response: ${message}\n\nCheck that your API key is valid.`
-      );
+      Alert.alert('EcoBot Error', `Could not get a response: ${message}`);
     } finally {
       setLoading(false);
     }

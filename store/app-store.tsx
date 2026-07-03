@@ -189,10 +189,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Persist on every state change
+  // Persist on every state change — but only after hydration has completed.
+  // Otherwise this fires once on mount with INITIAL_STATE and can clobber the
+  // user's saved data before the HYDRATE dispatch lands.
   useEffect(() => {
+    if (!hydrated) return;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
-  }, [state]);
+  }, [state, hydrated]);
 
   return <AppContext.Provider value={{ state, dispatch, hydrated }}>{children}</AppContext.Provider>;
 }

@@ -1,13 +1,7 @@
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withDelay,
-  withTiming,
-} from 'react-native-reanimated';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -17,7 +11,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EcoColors } from '@/constants/theme';
@@ -204,7 +204,7 @@ export default function TutorialScreen() {
 
   function finish() {
     dispatch({ type: 'SET_TUTORIAL_SEEN', payload: true });
-    router.replace('/(tabs)/');
+    router.replace('/(tabs)');
   }
 
   function goNext() {

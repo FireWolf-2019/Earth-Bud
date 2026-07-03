@@ -677,12 +677,15 @@ function NoteEditorModal({
     if (note) {
       dispatch({ type: 'UPDATE_NOTE', payload: { ...note, content: trimmed } });
     } else {
+      const now = new Date();
       dispatch({
         type: 'ADD_NOTE',
         payload: {
           id: `note_${Date.now()}`,
           content: trimmed,
-          date: new Date().toISOString().split('T')[0],
+          // Local calendar date, not UTC (toISOString would roll to the next
+          // day in the evening for users west of UTC).
+          date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
           moduleTag,
         },
       });
@@ -729,7 +732,8 @@ function NoteCard({
   onDelete: () => void;
 }) {
   const preview = note.content.split('\n')[0].slice(0, 120);
-  const dateStr = new Date(note.date).toLocaleDateString('en-US', {
+  // Append time so 'YYYY-MM-DD' parses as local midnight, not UTC.
+  const dateStr = new Date(`${note.date}T00:00:00`).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',

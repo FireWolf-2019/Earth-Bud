@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sed -E 's/=.*/=<redacted>/' .env)",
+      "Bash(npx expo *)",
+      "Bash(sips -g pixelWidth -g pixelHeight assets/images/icon.png)",
+      "Bash(npm audit *)"
+    ]
+  }
+}
