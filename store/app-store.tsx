@@ -192,9 +192,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Persist on every state change — but only after hydration has completed.
   // Otherwise this fires once on mount with INITIAL_STATE and can clobber the
   // user's saved data before the HYDRATE dispatch lands.
+  //
+  // chatHistory is intentionally excluded from persistence: an EcoBot
+  // conversation is session-only, so restarting the app returns the user to a
+  // fresh prompt screen rather than reopening the last chat.
   useEffect(() => {
     if (!hydrated) return;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
+    const { chatHistory: _chatHistory, ...persisted } = state;
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(persisted)).catch(() => {});
   }, [state, hydrated]);
 
   return <AppContext.Provider value={{ state, dispatch, hydrated }}>{children}</AppContext.Provider>;
