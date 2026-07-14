@@ -1,17 +1,19 @@
 {
   "expo": {
-    "name": "EnvironmentalApp",
-    "slug": "EnvironmentalApp",
+    "name": "EcoBuddy",
+    "slug": "EcoBuddy",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "environmentalapp",
+    "scheme": "ecobuddy",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.avishairajkumar.ecobuddy"
     },
     "android": {
+      "package": "com.avishairajkumar.ecobuddy",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
