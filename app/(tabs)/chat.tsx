@@ -266,7 +266,7 @@ export default function ChatScreen() {
               <View style={styles.welcomeIcon}>
                 <Text style={styles.welcomeIconText}>🌿</Text>
               </View>
-              <Text style={styles.welcomeTitle}>Hi! I'm EcoBot</Text>
+              <Text style={styles.welcomeTitle}>Hi! I&apos;m EcoBot</Text>
               <Text style={styles.welcomeBody}>
                 Ask me anything about the environment, climate change, or how to live more
                 sustainably. I have context from your footprint and eco-actions.

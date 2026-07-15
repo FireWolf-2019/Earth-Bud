@@ -280,7 +280,7 @@ function ThisWeekTab({
         <Text style={styles.encourageText}>{encouragement}</Text>
       </LinearGradient>
 
-      <Text style={styles.sectionTitle}>This Week's Impact</Text>
+      <Text style={styles.sectionTitle}>This Week&apos;s Impact</Text>
 
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
@@ -305,7 +305,7 @@ function ThisWeekTab({
           <Text style={styles.collectiveTitle}>Collective Impact</Text>
         </View>
         <Text style={styles.collectiveText}>
-          If 1 million people tracked like you this week, we'd save{' '}
+          If 1 million people tracked like you this week, we&apos;d save{' '}
           <Text style={styles.collectiveHighlight}>{collectiveMT.toLocaleString()} metric tons</Text>{' '}
           of CO₂ — equivalent to taking{' '}
           <Text style={styles.collectiveHighlight}>{carsOff} cars</Text>{' '}
