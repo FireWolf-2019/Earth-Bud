@@ -122,6 +122,9 @@ function SlideItem({ item, isActive }: { item: Slide; isActive: boolean }) {
       bodyTY.value    = 30;
       bodyOp.value    = 0;
     }
+    // Shared values are stable refs (Reanimated), not reactive state —
+    // only `isActive` should retrigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
 
   const iconStyle  = useAnimatedStyle(() => ({
@@ -180,6 +183,8 @@ function Dot({ active }: { active: boolean }) {
   useEffect(() => {
     w.value  = withSpring(active ? 24 : 8, { damping: 16, stiffness: 150 });
     op.value = withTiming(active ? 1 : 0.4, { duration: 220 });
+    // Shared values are stable refs (Reanimated); only `active` matters here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
   const style = useAnimatedStyle(() => ({ width: w.value, opacity: op.value }));

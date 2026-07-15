@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Animated,
   LayoutAnimation,
   Platform,
   UIManager,
@@ -82,8 +81,6 @@ function ActionCard({
     setExpanded(prev => !prev);
     dispatch({ type: 'MARK_ACTION_VIEWED', payload: action.id });
   }
-
-  const catColor = EcoColors.catWildlife;
 
   return (
     <View style={[styles.actionCard, isCommitted && styles.actionCardCommitted]}>

@@ -574,7 +574,10 @@ function LessonModal({
     if (module) {
       dispatch({ type: 'MARK_MODULE_VIEWED', payload: module.id });
     }
-  }, [module?.id]);
+    // Only re-fire when the module identity (id) changes, not on every
+    // re-render — `dispatch` is a stable useReducer reference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [module?.id, dispatch]);
 
   if (!module) return null;
 

@@ -76,7 +76,7 @@ const INITIAL_STATE: AppState = {
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 
-type AppAction =
+export type AppAction =
   | { type: 'HYDRATE'; payload: AppState }
   | { type: 'SET_USER_NAME'; payload: string }
   | { type: 'SET_FOOTPRINT'; payload: FootprintData }
@@ -93,7 +93,7 @@ type AppAction =
   | { type: 'MARK_ACTION_VIEWED'; payload: string }
   | { type: 'SET_TUTORIAL_SEEN'; payload: boolean };
 
-function reducer(state: AppState, action: AppAction): AppState {
+export function reducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'HYDRATE':
       return { ...INITIAL_STATE, ...action.payload };
