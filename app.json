@@ -1,19 +1,19 @@
 {
   "expo": {
-    "name": "EcoBuddy",
+    "name": "EarthBud",
     "slug": "EcoBuddy",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "ecobuddy",
+    "scheme": "earthbud",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.avishairajkumar.ecobuddy"
+      "bundleIdentifier": "com.avishairajkumar.earthbud"
     },
     "android": {
-      "package": "com.avishairajkumar.ecobuddy",
+      "package": "com.avishairajkumar.earthbud",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

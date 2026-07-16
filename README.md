@@ -1,4 +1,4 @@
-# 🌍 EcoBuddy
+# 🌍 EarthBud
 
 A cross-platform mobile app that helps people turn environmental awareness into sustainable, everyday action. It teaches the basics of climate change, measures your personal footprint, guides you through concrete actions, tracks your progress, and gives you an environmentally-trained AI assistant to lean on.
 
