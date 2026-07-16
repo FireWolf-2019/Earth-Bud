@@ -55,6 +55,12 @@
         "projectId": "1394d9ed-f150-4a2c-95e1-0957afbe0d63"
       }
     },
-    "owner": "fire-wolf"
+    "owner": "fire-wolf",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/1394d9ed-f150-4a2c-95e1-0957afbe0d63"
+    }
   }
 }
