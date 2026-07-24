@@ -10,7 +10,7 @@ The experience opens on a **launch screen** with a call to action and an integra
 
 | Tab | Name | Purpose |
 | --- | --- | --- |
-| 1 | **Learn** 🌎 | A plain-language summary of global climate change, tutorials for understanding major Earth systems, and a notes feature for capturing what you learn. |
+| 1 | **Learn** 🌎 | A plain-language summary of global climate change and tutorials for understanding major Earth systems. |
 | 2 | **Footprint** 🍃 | A personal carbon-footprint calculator covering transport, home energy, diet, and consumption — with a breakdown, an "Earths needed" figure, and a comparison to the average. |
 | 3 | **Actions** ⚡ | A library of 20+ concrete actions (composting, biking, planting trees, eating less meat, switching to renewables, and more), each with background, why it matters, step-by-step method, and collective impact. |
 | 4 | **Tracker** 📊 | Progress visuals and encouraging messages that show your individual impact and predicted collective impact, plus a share feature. |

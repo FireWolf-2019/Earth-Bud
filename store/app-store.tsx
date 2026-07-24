@@ -14,13 +14,6 @@ export interface FootprintData {
   shoppingFrequency: 'minimal' | 'average' | 'frequent';
 }
 
-export interface EduNote {
-  id: string;
-  content: string;
-  date: string;
-  moduleTag?: string;
-}
-
 export interface ActionLog {
   date: string;       // 'YYYY-MM-DD'
   actionId: string;
@@ -37,7 +30,6 @@ export interface AppState {
   userName: string;
   footprintData: FootprintData;
   footprintCompleted: boolean;
-  eduNotes: EduNote[];
   completedModules: string[];
   viewedModules: string[];
   activeActions: string[];
@@ -64,7 +56,6 @@ const INITIAL_STATE: AppState = {
   userName: '',
   footprintData: DEFAULT_FOOTPRINT,
   footprintCompleted: false,
-  eduNotes: [],
   completedModules: [],
   viewedModules: [],
   activeActions: [],
@@ -81,9 +72,6 @@ export type AppAction =
   | { type: 'SET_USER_NAME'; payload: string }
   | { type: 'SET_FOOTPRINT'; payload: FootprintData }
   | { type: 'SET_FOOTPRINT_COMPLETED'; payload: boolean }
-  | { type: 'ADD_NOTE'; payload: EduNote }
-  | { type: 'UPDATE_NOTE'; payload: EduNote }
-  | { type: 'DELETE_NOTE'; payload: string }
   | { type: 'MARK_MODULE_VIEWED'; payload: string }
   | { type: 'COMPLETE_MODULE'; payload: string }
   | { type: 'TOGGLE_ACTION'; payload: string }
@@ -103,15 +91,6 @@ export function reducer(state: AppState, action: AppAction): AppState {
       return { ...state, footprintData: action.payload };
     case 'SET_FOOTPRINT_COMPLETED':
       return { ...state, footprintCompleted: action.payload };
-    case 'ADD_NOTE':
-      return { ...state, eduNotes: [action.payload, ...state.eduNotes] };
-    case 'UPDATE_NOTE':
-      return {
-        ...state,
-        eduNotes: state.eduNotes.map(n => n.id === action.payload.id ? action.payload : n),
-      };
-    case 'DELETE_NOTE':
-      return { ...state, eduNotes: state.eduNotes.filter(n => n.id !== action.payload) };
     case 'MARK_MODULE_VIEWED':
       return {
         ...state,
@@ -180,6 +159,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (raw) {
         try {
           const saved = JSON.parse(raw) as Partial<AppState>;
+          // Drop the legacy notes field from any state saved by older versions,
+          // so it is purged from storage on the next persist and never lingers.
+          delete (saved as Record<string, unknown>).eduNotes;
           dispatch({ type: 'HYDRATE', payload: { ...INITIAL_STATE, ...saved } });
         } catch {
           // ignore corrupt data

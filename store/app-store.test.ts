@@ -86,7 +86,6 @@ const INITIAL_STATE: AppState = {
   userName: '',
   footprintData: BASE,
   footprintCompleted: false,
-  eduNotes: [],
   completedModules: [],
   viewedModules: [],
   activeActions: [],
@@ -100,27 +99,6 @@ describe('reducer', () => {
   it('sets the user name', () => {
     const next = reducer(INITIAL_STATE, { type: 'SET_USER_NAME', payload: 'Ada' });
     expect(next.userName).toBe('Ada');
-  });
-
-  it('prepends new notes so the most recent is first', () => {
-    const first = reducer(INITIAL_STATE, {
-      type: 'ADD_NOTE',
-      payload: { id: '1', content: 'first', date: '2026-01-01' },
-    });
-    const second = reducer(first, {
-      type: 'ADD_NOTE',
-      payload: { id: '2', content: 'second', date: '2026-01-02' },
-    });
-    expect(second.eduNotes.map(n => n.id)).toEqual(['2', '1']);
-  });
-
-  it('deletes a note by id', () => {
-    const withNote = reducer(INITIAL_STATE, {
-      type: 'ADD_NOTE',
-      payload: { id: '1', content: 'note', date: '2026-01-01' },
-    });
-    const withoutNote = reducer(withNote, { type: 'DELETE_NOTE', payload: '1' });
-    expect(withoutNote.eduNotes).toEqual([]);
   });
 
   it('does not duplicate a module marked viewed twice', () => {

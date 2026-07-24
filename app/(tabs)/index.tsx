@@ -6,11 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Modal,
-  TextInput,
   FlatList,
   Animated,
   Easing,
-  Alert,
   useWindowDimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
@@ -21,7 +19,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 
 import { EcoColors } from '@/constants/theme';
-import { useAppStore, EduNote } from '@/store/app-store';
+import { useAppStore } from '@/store/app-store';
 
 // ── Module Data ───────────────────────────────────────────────────────────────
 
@@ -345,7 +343,7 @@ const CHALLENGE_SLIDES: ChallengeSlide[] = [
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-type SubTab = 'challenge' | 'modules' | 'notes';
+type SubTab = 'challenge' | 'modules';
 
 function SubTabBar({
   active,
@@ -357,7 +355,6 @@ function SubTabBar({
   const tabs: { key: SubTab; label: string }[] = [
     { key: 'challenge', label: 'The Challenge' },
     { key: 'modules', label: 'Modules' },
-    { key: 'notes', label: 'Notes' },
   ];
   return (
     <View style={styles.subTabBar}>
@@ -568,7 +565,6 @@ function LessonModal({
   onClose: () => void;
 }) {
   const { dispatch } = useAppStore();
-  const [showNoteEditor, setShowNoteEditor] = useState(false);
 
   useEffect(() => {
     if (module) {
@@ -591,12 +587,6 @@ function LessonModal({
         <View style={styles.lessonHeader}>
           <TouchableOpacity onPress={onClose} style={styles.lessonCloseBtn}>
             <Ionicons name="close" size={24} color={EcoColors.text} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.lessonNoteBtn}
-            onPress={() => setShowNoteEditor(true)}>
-            <Ionicons name="create-outline" size={18} color={EcoColors.primary} />
-            <Text style={styles.lessonNoteBtnText}>Add Note</Text>
           </TouchableOpacity>
         </View>
 
@@ -645,141 +635,16 @@ function LessonModal({
           </View>
         </ScrollView>
       </SafeAreaView>
-
-      {showNoteEditor && (
-        <NoteEditorModal
-          moduleTag={module.name}
-          onClose={() => setShowNoteEditor(false)}
-        />
-      )}
     </Modal>
-  );
-}
-
-// ── Note Components ───────────────────────────────────────────────────────────
-
-function NoteEditorModal({
-  note,
-  moduleTag,
-  onClose,
-}: {
-  note?: EduNote;
-  moduleTag?: string;
-  onClose: () => void;
-}) {
-  const { dispatch } = useAppStore();
-  const [content, setContent] = useState(note?.content ?? '');
-
-  function handleClose() {
-    const trimmed = content.trim();
-    if (!trimmed) {
-      if (note) dispatch({ type: 'DELETE_NOTE', payload: note.id });
-      onClose();
-      return;
-    }
-    if (note) {
-      dispatch({ type: 'UPDATE_NOTE', payload: { ...note, content: trimmed } });
-    } else {
-      const now = new Date();
-      dispatch({
-        type: 'ADD_NOTE',
-        payload: {
-          id: `note_${Date.now()}`,
-          content: trimmed,
-          // Local calendar date, not UTC (toISOString would roll to the next
-          // day in the evening for users west of UTC).
-          date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
-          moduleTag,
-        },
-      });
-    }
-    onClose();
-  }
-
-  return (
-    <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
-      <SafeAreaView style={styles.editorContainer}>
-        <View style={styles.editorHeader}>
-          <TouchableOpacity onPress={handleClose} style={styles.editorDone}>
-            <Text style={styles.editorDoneText}>Done</Text>
-          </TouchableOpacity>
-          {moduleTag && (
-            <View style={styles.editorTag}>
-              <Ionicons name="leaf-outline" size={11} color={EcoColors.primary} />
-              <Text style={styles.editorTagText}>{moduleTag}</Text>
-            </View>
-          )}
-        </View>
-        <TextInput
-          style={styles.editorInput}
-          value={content}
-          onChangeText={setContent}
-          placeholder="Jot down something that surprised you..."
-          placeholderTextColor={EcoColors.textMuted}
-          multiline
-          autoFocus
-          textAlignVertical="top"
-        />
-      </SafeAreaView>
-    </Modal>
-  );
-}
-
-function NoteCard({
-  note,
-  onPress,
-  onDelete,
-}: {
-  note: EduNote;
-  onPress: () => void;
-  onDelete: () => void;
-}) {
-  const preview = note.content.split('\n')[0].slice(0, 120);
-  // Append time so 'YYYY-MM-DD' parses as local midnight, not UTC.
-  const dateStr = new Date(`${note.date}T00:00:00`).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-
-  return (
-    <TouchableOpacity style={styles.noteCard} onPress={onPress} activeOpacity={0.82}>
-      <View style={styles.noteCardBody}>
-        {note.moduleTag && (
-          <View style={styles.noteTag}>
-            <Ionicons name="leaf-outline" size={10} color={EcoColors.primary} />
-            <Text style={styles.noteTagText}>{note.moduleTag}</Text>
-          </View>
-        )}
-        <Text style={styles.notePreview} numberOfLines={3}>{preview}</Text>
-        <Text style={styles.noteDate}>{dateStr}</Text>
-      </View>
-      <TouchableOpacity onPress={onDelete} style={styles.noteDeleteBtn} hitSlop={8}>
-        <Ionicons name="trash-outline" size={16} color={EcoColors.textMuted} />
-      </TouchableOpacity>
-    </TouchableOpacity>
   );
 }
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function EducationScreen() {
-  const { state, dispatch } = useAppStore();
+  const { state } = useAppStore();
   const [activeSubTab, setActiveSubTab] = useState<SubTab>('challenge');
   const [activeModule, setActiveModule] = useState<Module | null>(null);
-  const [editingNote, setEditingNote] = useState<EduNote | undefined>(undefined);
-  const [showNewNote, setShowNewNote] = useState(false);
-
-  function confirmDeleteNote(id: string) {
-    Alert.alert('Delete Note', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => dispatch({ type: 'DELETE_NOTE', payload: id }),
-      },
-    ]);
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -816,57 +681,7 @@ export default function EducationScreen() {
         />
       )}
 
-      {/* Notes */}
-      {activeSubTab === 'notes' && (
-        <View style={{ flex: 1 }}>
-          {state.eduNotes.length === 0 ? (
-            <View style={styles.emptyNotes}>
-              <Ionicons name="create-outline" size={48} color={EcoColors.green300} />
-              <Text style={styles.emptyNotesTitle}>No notes yet</Text>
-              <Text style={styles.emptyNotesSub}>
-                Jot down facts or thoughts as you explore the modules.
-              </Text>
-            </View>
-          ) : (
-            <FlatList
-              data={state.eduNotes}
-              keyExtractor={item => item.id}
-              contentContainerStyle={styles.listPad}
-              showsVerticalScrollIndicator={false}
-              renderItem={({ item }) => (
-                <NoteCard
-                  note={item}
-                  onPress={() => setEditingNote(item)}
-                  onDelete={() => confirmDeleteNote(item.id)}
-                />
-              )}
-            />
-          )}
-          <TouchableOpacity
-            style={styles.fab}
-            onPress={() => setShowNewNote(true)}
-            activeOpacity={0.85}>
-            <LinearGradient
-              colors={[EcoColors.green600, EcoColors.green800]}
-              style={styles.fabGradient}>
-              <Ionicons name="add" size={28} color="#fff" />
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      )}
-
       <LessonModal module={activeModule} onClose={() => setActiveModule(null)} />
-
-      {editingNote && (
-        <NoteEditorModal
-          note={editingNote}
-          onClose={() => setEditingNote(undefined)}
-        />
-      )}
-
-      {showNewNote && (
-        <NoteEditorModal onClose={() => setShowNewNote(false)} />
-      )}
     </SafeAreaView>
   );
 }
@@ -1057,16 +872,6 @@ const styles = StyleSheet.create({
     borderBottomColor: EcoColors.border,
   },
   lessonCloseBtn: { padding: 4 },
-  lessonNoteBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: EcoColors.primaryPale,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  lessonNoteBtnText: { fontSize: 13, fontWeight: '600', color: EcoColors.primary },
   lessonHero: {
     alignItems: 'center',
     paddingVertical: 40,
@@ -1104,103 +909,4 @@ const styles = StyleSheet.create({
   involvedText: { flex: 1 },
   involvedTitle: { fontSize: 16, fontWeight: '700', color: '#fff' },
   involvedSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
-
-  // Note editor
-  editorContainer: { flex: 1, backgroundColor: EcoColors.white },
-  editorHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: EcoColors.border,
-  },
-  editorDone: { paddingVertical: 4, paddingHorizontal: 2 },
-  editorDoneText: { fontSize: 16, fontWeight: '700', color: EcoColors.primary },
-  editorTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: EcoColors.primaryPale,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  editorTagText: { fontSize: 12, color: EcoColors.primary, fontWeight: '600' },
-  editorInput: {
-    flex: 1,
-    padding: 20,
-    fontSize: 16,
-    color: EcoColors.text,
-    lineHeight: 26,
-  },
-
-  // Note cards
-  noteCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: EcoColors.white,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: EcoColors.border,
-    padding: 14,
-    marginBottom: 12,
-    shadowColor: EcoColors.green800,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  noteCardBody: { flex: 1, gap: 6 },
-  noteTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    backgroundColor: EcoColors.primaryPale,
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  noteTagText: { fontSize: 11, color: EcoColors.primary, fontWeight: '600' },
-  notePreview: { fontSize: 14, color: EcoColors.text, lineHeight: 20 },
-  noteDate: { fontSize: 12, color: EcoColors.textMuted },
-  noteDeleteBtn: { paddingLeft: 12, paddingTop: 2 },
-
-  // Empty notes
-  emptyNotes: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingHorizontal: 40,
-  },
-  emptyNotesTitle: { fontSize: 17, fontWeight: '700', color: EcoColors.text },
-  emptyNotesSub: {
-    fontSize: 14,
-    color: EcoColors.textMuted,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-
-  // FAB
-  fab: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    borderRadius: 32,
-    shadowColor: EcoColors.green800,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  fabGradient: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });

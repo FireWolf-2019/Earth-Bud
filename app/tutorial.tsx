@@ -51,7 +51,7 @@ const SLIDES: Slide[] = [
     gradient: ['#14532D', '#15803D'],
     pill: 'Tab 1 — Learn',
     title: 'Understand the planet',
-    body: 'Explore concise breakdowns of global climate change, dive into interactive tutorials on major earth systems, and take notes as you build your environmental knowledge.',
+    body: 'Explore concise breakdowns of global climate change and dive into interactive tutorials on major earth systems to build your environmental knowledge.',
   },
   {
     id: 'footprint',

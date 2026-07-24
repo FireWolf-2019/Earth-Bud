@@ -230,7 +230,7 @@ export default function ChatScreen() {
   const showWelcome = state.chatHistory.length === 0;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <LinearGradient
         colors={[EcoColors.green800, EcoColors.green600]}
@@ -326,7 +326,7 @@ export default function ChatScreen() {
               <Ionicons name="send" size={17} color="#fff" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.tempNotice}>Chats are temporary — tap ✕ to clear anytime.</Text>
+          <Text style={styles.tempNotice}>EcoBot can make mistakes. Check important info.</Text>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
