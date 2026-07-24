@@ -87,7 +87,7 @@ Put the resulting URL in your `.env` as `EXPO_PUBLIC_API_URL`.
 
 ## Design
 
-The visual identity is **green-forward with blue accents**, defined in [`constants/theme.ts`](constants/theme.ts). The app supports light and dark modes and uses haptics and subtle animation to keep the experience encouraging rather than alarming — the goal is to convert awareness into momentum.
+The visual identity is **green-forward with blue accents**, defined in [`constants/theme.ts`](constants/theme.ts). EarthBud ships **light mode only** — a deliberate product choice, since the bright green/blue palette is central to keeping the experience hopeful and motivating. Haptics and subtle animation keep the tone encouraging rather than alarming — the goal is to convert awareness into momentum.
 
 ## Scripts
 
@@ -97,6 +97,7 @@ npm run android  # open on Android
 npm run ios      # open on iOS
 npm run web      # open in browser
 npm run lint     # expo lint
+npm test         # run the Jest test suite
 ```
 
 ---
