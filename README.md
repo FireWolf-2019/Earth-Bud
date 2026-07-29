@@ -1,8 +1,8 @@
 # 🌍 EarthBud
 
-A cross-platform mobile app that helps people turn environmental awareness into sustainable, everyday action. It teaches the basics of climate change, measures your personal footprint, guides you through concrete actions, tracks your progress, and gives you an environmentally-trained AI assistant to lean on.
+An iOS app that helps people turn environmental awareness into sustainable, everyday action. It teaches the basics of climate change, measures your personal footprint, guides you through concrete actions, tracks your progress, and gives you an environmentally-trained AI assistant to lean on.
 
-Built with [Expo](https://docs.expo.dev/versions/v54.0.0/) (SDK 54) and [Expo Router](https://docs.expo.dev/router/introduction/), running on iOS, Android, and the web from a single codebase.
+Built with [Expo](https://docs.expo.dev/versions/v54.0.0/) (SDK 54) and [Expo Router](https://docs.expo.dev/router/introduction/), and shipped to the **iOS App Store** (currently in TestFlight beta).
 
 ## What it does
 
@@ -24,6 +24,7 @@ The experience opens on a **launch screen** with a call to action and an integra
 - **State & persistence:** React Context + `useReducer`, persisted to device via `@react-native-async-storage/async-storage`
 - **UI:** Custom green/blue theme, `expo-linear-gradient`, `@expo/vector-icons` (Ionicons), `react-native-reanimated`, `expo-haptics`
 - **AI backend:** OpenAI (`gpt-4o-mini`) via a serverless proxy deployed on **Vercel** (keeps the API key off the client)
+- **Build & release:** EAS Build + EAS Update (OTA), distributed through App Store Connect / TestFlight
 
 ### Project structure
 
@@ -37,14 +38,16 @@ store/app-store.tsx  Global state, persistence, footprint calc, actions data
 constants/theme.ts   Green/blue color system
 components/          Shared UI components
 hooks/               Theme / color-scheme hooks
+scripts/             Icon and asset generation
 ```
 
 ## Getting started
 
 ### Prerequisites
 
+- macOS with Xcode and an iOS Simulator, or a physical iPhone
 - Node.js (LTS) and npm
-- The [Expo Go](https://expo.dev/go) app on your phone, or an iOS Simulator / Android Emulator
+- The [Expo Go](https://expo.dev/go) app, if you want to run on device without a custom build
 
 ### Run the app
 
@@ -59,7 +62,7 @@ cp .env.example .env
 npx expo start
 ```
 
-Then press `i` for iOS, `a` for Android, `w` for web, or scan the QR code with Expo Go.
+Then press `i` to open the iOS Simulator, or scan the QR code with Expo Go on your iPhone.
 
 ### Environment variables
 
@@ -78,12 +81,59 @@ EcoBot talks to a serverless proxy ([`api/chat.ts`](api/chat.ts)) rather than ca
 
 ```bash
 npm i -g vercel
-vercel                       # first run links/creates the project
+vercel                         # first run links/creates the project
 vercel env add OPENAI_API_KEY  # paste your sk-... key
-vercel --prod                # deploy
+vercel --prod                  # deploy
 ```
 
 Put the resulting URL in your `.env` as `EXPO_PUBLIC_API_URL`.
+
+## Deployment (iOS)
+
+EarthBud targets the iOS App Store. Releases go out through [EAS](https://docs.expo.dev/build/introduction/), configured in [`eas.json`](eas.json) with `development`, `preview`, and `production` profiles.
+
+### One-time setup
+
+- An Apple Developer Program membership and an app record in App Store Connect matching the bundle identifier `com.avishairajkumar.earthbud`.
+- `npm i -g eas-cli && eas login`, then `eas init` to link the Expo project.
+- Set the production API URL as an EAS environment variable so it is baked into the build:
+
+  ```bash
+  eas env:create --environment production --name EXPO_PUBLIC_API_URL --value https://your-project.vercel.app
+  ```
+
+  Without it, EcoBot fails in the shipped app — `EXPO_PUBLIC_*` values are resolved at build time, not runtime.
+
+### Shipping a release
+
+```bash
+# Native/production build (signing credentials are stored on EAS after the first run)
+eas build --platform ios --profile production
+
+# Upload to App Store Connect / TestFlight
+eas submit --platform ios --profile production
+```
+
+If `eas submit` stalls in the submission queue, download the `.ipa` from the EAS build page and upload it with [Apple Transporter](https://apps.apple.com/app/transporter/id1450874784) instead. Once processed, the build appears in TestFlight for internal and external testers, and can be promoted to an App Store release.
+
+### JS-only updates
+
+Changes that touch only JavaScript/assets can skip the review cycle and ship over the air:
+
+```bash
+eas update --channel production --message "What changed"
+```
+
+Anything native — app icons, splash screen, `app.json` config, new native dependencies — requires a full rebuild and a new App Store Connect upload.
+
+### Icons and launch assets
+
+```bash
+npm run icons:ios  # derive the light/dark/tinted iOS icon variants from assets/images/icon.png
+npm run icons      # generate the remaining placeholder assets (splash, favicon)
+```
+
+`npm run icons` never overwrites `icon.png` or the generated `ios-*` files.
 
 ## Design
 
@@ -93,9 +143,7 @@ The visual identity is **green-forward with blue accents**, defined in [`constan
 
 ```bash
 npm start        # expo start
-npm run android  # open on Android
 npm run ios      # open on iOS
-npm run web      # open in browser
 npm run lint     # expo lint
 npm test         # run the Jest test suite
 ```
