@@ -148,6 +148,12 @@ npm run lint     # expo lint
 npm test         # run the Jest test suite
 ```
 
+## License
+
+EarthBud is **source-available, not open source**. The code is published so others can read and learn from it — studying it, referencing it for coursework or research, and running it locally to see how it works are all welcome. Copying it into other projects, redistributing it, using it commercially, or reusing the EarthBud name and assets are not.
+
+See [LICENSE.md](LICENSE.md) for the full terms.
+
 ---
 
 *Mission: raise environmental awareness and convert it into sustainable actions that benefit the planet.*
